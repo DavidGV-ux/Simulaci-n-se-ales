@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import ast
 import math
+import re
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
@@ -152,6 +153,26 @@ _ALLOWED_FUNCS = {
 _ALLOWED_CONSTANTS = {"pi": np.pi, "e": np.e, "tau": 2.0 * np.pi}
 
 
+def _csv_float(tok: str) -> float:
+    """Convierte un token numérico, tolerando coma decimal y separador de miles.
+
+    Acepta "0,5" (coma decimal), "1.000" o "1,000" (separador de miles) y
+    devuelve el valor en notación decimal estándar.
+    """
+    s = tok.strip().replace(" ", "")
+    if not s:
+        raise ValueError("Valor numérico vacío")
+    if "," in s and "." in s:
+        # Ambos separadores: el ultimo es decimal y los demas son miles.
+        s = s.replace(".", "").replace(",", ".")
+    elif "," in s and re.fullmatch(r"\d{1,3}(,\d{3})+", s):
+        # Separador de miles con coma (p. ej. "1,000").
+        s = s.replace(",", "")
+    elif "," in s:
+        s = s.replace(",", ".")
+    return float(s)
+
+
 def safe_eval_signal(expr: str, t: np.ndarray) -> np.ndarray:
     """Evalúa una expresión matemática con una lista blanca de operaciones.
 
@@ -263,7 +284,7 @@ def load_csv_signal(path: str) -> CsvSignal:
         if len(parts) == 1:
             parts = line.split()
         try:
-            vals = [float(v.replace(",", ".")) for v in parts]
+            vals = [_csv_float(v) for v in parts]
         except ValueError:
             continue
         if len(vals) >= 2:
