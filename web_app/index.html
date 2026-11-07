@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Comunicaciones · Simulador de Señales</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Plotly.js CDN -->
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <!-- ====================================================================
+         Sidebar Navigation
+         ==================================================================== -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">∿</div>
+            <div class="brand-text">
+                <h1>SEÑALES</h1>
+                <p>Laboratorio Web</p>
+            </div>
+        </div>
+
+        <p class="nav-section-title">Módulos</p>
+        <ul class="nav-list">
+            <li>
+                <button class="nav-btn active" data-module="am">
+                    <span>📡</span> Modulación AM
+                    <span class="nav-badge">Analógica</span>
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-module="ask">
+                    <span>⚡</span> Modulación ASK
+                    <span class="nav-badge">OOK</span>
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-module="fsk">
+                    <span>〰️</span> Modulación FSK
+                    <span class="nav-badge">2 Tonos</span>
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-module="pcm">
+                    <span>📊</span> Modulación PCM
+                    <span class="nav-badge">Pulsos</span>
+                </button>
+            </li>
+        </ul>
+
+        <p class="nav-section-title">Documentación</p>
+        <ul class="nav-list">
+            <li>
+                <button class="nav-btn" data-module="theory">
+                    <span>📖</span> Marco Teórico
+                </button>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <p><strong>Modelo de Canal:</strong></p>
+            <p>Friis (FSL) · AWGN · Multitrayecto · CFO · Ruido de fase</p>
+        </div>
+    </aside>
+
+    <!-- ====================================================================
+         Main Wrapper
+         ==================================================================== -->
+    <main class="main-wrapper">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-info">
+                <h2 id="page-title">Modulación de Amplitud · AM</h2>
+                <p id="page-subtitle">La amplitud de la portadora sigue a la moduladora. Compara el detector de envolvente con el coherente y observa la sobremodulación.</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-ghost" id="btn-export-csv" title="Exportar series simuladas a CSV">📥 Exportar CSV</button>
+                <button class="btn btn-ghost" id="btn-export-png" title="Guardar gráfico principal como imagen">📸 Guardar PNG</button>
+                <button class="btn btn-ghost" id="btn-reset" title="Restaurar parámetros iniciales">↺ Reiniciar</button>
+                <button class="btn btn-primary" id="btn-simulate" title="Ejecutar simulación (Ctrl + Enter)">⚡ Simular</button>
+            </div>
+        </header>
+
+        <!-- Banner de Error -->
+        <div class="alert-banner" id="alert-banner">
+            <span>⚠️</span>
+            <span id="alert-msg">Mensaje de error</span>
+        </div>
+
+        <!-- ================================================================
+             Simulation Work Area
+             ================================================================ -->
+        <div id="simulation-view">
+            <!-- Ribbon de Métricas (5 Tarjetas Dinámicas) -->
+            <section class="metrics-ribbon">
+                <div class="metric-card color-gold" id="card-m1">
+                    <span class="metric-title" id="m1-title">Métrica 1</span>
+                    <span class="metric-value" id="m1-value">0.00</span>
+                    <span class="metric-caption" id="m1-caption">Descripción</span>
+                </div>
+                <div class="metric-card color-amber" id="card-m2">
+                    <span class="metric-title" id="m2-title">Métrica 2</span>
+                    <span class="metric-value" id="m2-value">0.00</span>
+                    <span class="metric-caption" id="m2-caption">Descripción</span>
+                </div>
+                <div class="metric-card color-cream" id="card-m3">
+                    <span class="metric-title" id="m3-title">Métrica 3</span>
+                    <span class="metric-value" id="m3-value">0.00</span>
+                    <span class="metric-caption" id="m3-caption">Descripción</span>
+                </div>
+                <div class="metric-card color-bright" id="card-m4">
+                    <span class="metric-title" id="m4-title">Métrica 4</span>
+                    <span class="metric-value" id="m4-value">0.00</span>
+                    <span class="metric-caption" id="m4-caption">Descripción</span>
+                </div>
+                <div class="metric-card color-gold" id="card-m5">
+                    <span class="metric-title" id="m5-title">Métrica 5</span>
+                    <span class="metric-value" id="m5-value">0.00</span>
+                    <span class="metric-caption" id="m5-caption">Descripción</span>
+                </div>
+            </section>
+
+            <!-- Workspace: Controles a la izquierda, Gráficas a la derecha -->
+            <section class="workspace">
+                <!-- Columna de Controles -->
+                <div class="control-sidebar">
+                    
+                    <!-- Formulario AM -->
+                    <div class="control-card module-card" id="ctrl-am">
+                        <div class="control-card-header">Señal Moduladora y AM</div>
+                        <div class="control-card-body">
+                            <div class="form-group">
+                                <label for="am-waveform">Forma de Onda</label>
+                                <select class="form-select" id="am-waveform">
+                                    <option value="sine">Senoidal</option>
+                                    <option value="square">Cuadrada</option>
+                                    <option value="triangle">Triangular</option>
+                                    <option value="sawtooth">Diente de sierra</option>
+                                    <option value="chirp">Chirp (Barrido)</option>
+                                    <option value="two_tone">Dos tonos</option>
+                                    <option value="formula">Fórmula personalizada</option>
+                                    <option value="csv">CSV externo</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="group-am-formula" style="display:none;">
+                                <label for="am-formula">Fórmula segura f(t)</label>
+                                <input type="text" class="form-control" id="am-formula" value="0.8*sin(2*pi*1000*t) + 0.2*sin(2*pi*3000*t)">
+                            </div>
+                            <div class="form-group" id="group-am-csv" style="display:none;">
+                                <label>Cargar Archivo CSV</label>
+                                <input type="file" id="am-csv-file" accept=".csv,.txt" class="form-control">
+                                <span class="unit" id="am-csv-status">Sin archivo cargado</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="am-fm">Frecuencia fm <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="am-fm" value="1000" min="10" max="20000" step="50">
+                            </div>
+                            <div class="form-group">
+                                <label for="am-m">Índice m <span class="unit">(m > 1 sobremod.)</span></label>
+                                <input type="number" class="form-control" id="am-m" value="0.8" min="0" max="2.0" step="0.05">
+                            </div>
+                            <div class="form-group">
+                                <label for="am-vp">Portadora Vp <span class="unit">(V)</span></label>
+                                <input type="number" class="form-control" id="am-vp" value="1.0" min="0.1" max="5.0" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label for="am-fc">Frecuencia Portadora fc <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="am-fc" value="20000" min="2000" max="200000" step="1000">
+                            </div>
+                            <div class="form-group">
+                                <label for="am-fs">Frecuencia Muestreo fs <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="am-fs" value="400000" min="50000" max="2000000" step="10000">
+                            </div>
+                            <div class="form-group">
+                                <label for="am-duration">Duración <span class="unit">(ms)</span></label>
+                                <input type="number" class="form-control" id="am-duration" value="10" min="1" max="100" step="1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario ASK -->
+                    <div class="control-card module-card" id="ctrl-ask" style="display:none;">
+                        <div class="control-card-header">Secuencia de Bits y ASK</div>
+                        <div class="control-card-body">
+                            <div class="form-group">
+                                <label for="ask-nbits">Número de bits</label>
+                                <input type="number" class="form-control" id="ask-nbits" value="4000" min="16" max="200000" step="500">
+                            </div>
+                            <div class="form-group">
+                                <label for="ask-bitmode">Fuente de bits</label>
+                                <select class="form-select" id="ask-bitmode">
+                                    <option value="random">Aleatoria</option>
+                                    <option value="manual">Manual</option>
+                                    <option value="alternating">Alternada (0101…)</option>
+                                    <option value="prbs7">PRBS-7</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="group-ask-manual" style="display:none;">
+                                <label for="ask-manual">Bits manuales (0 y 1)</label>
+                                <input type="text" class="form-control" id="ask-manual" value="1011001011100101">
+                            </div>
+                            <div class="form-group">
+                                <label for="ask-rb">Tasa de bits Rb <span class="unit">(bit/s)</span></label>
+                                <input type="number" class="form-control" id="ask-rb" value="1000" min="100" max="100000" step="100">
+                            </div>
+                            <div class="form-group">
+                                <label for="ask-fc">Portadora fc <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="ask-fc" value="6000" min="500" max="500000" step="500">
+                            </div>
+                            <div class="form-group">
+                                <label for="ask-amplitude">Amplitud <span class="unit">(V)</span></label>
+                                <input type="number" class="form-control" id="ask-amplitude" value="1.0" min="0.1" max="5.0" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label for="ask-sps">Muestras por bit (sps)</label>
+                                <input type="number" class="form-control" id="ask-sps" value="32" min="8" max="128" step="4">
+                            </div>
+                            <div class="form-group">
+                                <label for="ask-detector">Tipo de Detector</label>
+                                <select class="form-select" id="ask-detector">
+                                    <option value="coherent">Coherente (Correlador)</option>
+                                    <option value="envelope">Envolvente</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ask-timing">Error de Timing <span class="unit">(fracción bit)</span></label>
+                                <input type="number" class="form-control" id="ask-timing" value="0.0" min="-0.45" max="0.45" step="0.05">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario FSK -->
+                    <div class="control-card module-card" id="ctrl-fsk" style="display:none;">
+                        <div class="control-card-header">Parámetros FSK</div>
+                        <div class="control-card-body">
+                            <div class="form-group">
+                                <label for="fsk-nbits">Número de bits</label>
+                                <input type="number" class="form-control" id="fsk-nbits" value="4000" min="16" max="200000" step="500">
+                            </div>
+                            <div class="form-group">
+                                <label for="fsk-bitmode">Fuente de bits</label>
+                                <select class="form-select" id="fsk-bitmode">
+                                    <option value="random">Aleatoria</option>
+                                    <option value="manual">Manual</option>
+                                    <option value="alternating">Alternada</option>
+                                    <option value="prbs7">PRBS-7</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="group-fsk-manual" style="display:none;">
+                                <label for="fsk-manual">Bits manuales</label>
+                                <input type="text" class="form-control" id="fsk-manual" value="1011001011100101">
+                            </div>
+                            <div class="form-group">
+                                <label for="fsk-rb">Tasa de bits Rb <span class="unit">(bit/s)</span></label>
+                                <input type="number" class="form-control" id="fsk-rb" value="1000" min="100" max="100000" step="100">
+                            </div>
+                            <div class="form-group">
+                                <label for="fsk-fc">Portadora Central fc <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="fsk-fc" value="6000" min="1000" max="500000" step="500">
+                            </div>
+                            <div class="form-group">
+                                <label for="fsk-h">Índice h <span class="unit">(2Δf / Rb)</span></label>
+                                <input type="number" class="form-control" id="fsk-h" value="1.0" min="0.2" max="4.0" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label for="fsk-sps">Muestras por bit</label>
+                                <input type="number" class="form-control" id="fsk-sps" value="32" min="8" max="128" step="4">
+                            </div>
+                            <div class="form-group">
+                                <label for="fsk-detector">Detector</label>
+                                <select class="form-select" id="fsk-detector">
+                                    <option value="noncoherent">No Coherente (I/Q)</option>
+                                    <option value="coherent">Coherente</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulario PCM -->
+                    <div class="control-card module-card" id="ctrl-pcm" style="display:none;">
+                        <div class="control-card-header">Parámetros PCM</div>
+                        <div class="control-card-body">
+                            <div class="form-group">
+                                <label for="pcm-waveform">Forma de onda analógica</label>
+                                <select class="form-select" id="pcm-waveform">
+                                    <option value="sine">Senoidal</option>
+                                    <option value="square">Cuadrada</option>
+                                    <option value="triangle">Triangular</option>
+                                    <option value="two_tone">Dos tonos</option>
+                                    <option value="formula">Fórmula</option>
+                                    <option value="csv">CSV externo</option>
+                                </select>
+                            </div>
+                            <div class="form-group" id="group-pcm-formula" style="display:none;">
+                                <label for="pcm-formula">Fórmula segura f(t)</label>
+                                <input type="text" class="form-control" id="pcm-formula" value="0.8*sin(2*pi*1000*t)">
+                            </div>
+                            <div class="form-group" id="group-pcm-csv" style="display:none;">
+                                <label>Cargar Archivo CSV</label>
+                                <input type="file" id="pcm-csv-file" accept=".csv,.txt" class="form-control">
+                                <span class="unit" id="pcm-csv-status">Sin archivo cargado</span>
+                            </div>
+                            <div class="form-group">
+                                <label for="pcm-fm">Frecuencia fm <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="pcm-fm" value="1000" min="10" max="20000" step="50">
+                            </div>
+                            <div class="form-group">
+                                <label for="pcm-fs">Frecuencia de Muestreo fs <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="pcm-fs" value="8000" min="500" max="192000" step="500">
+                            </div>
+                            <div class="form-group">
+                                <label for="pcm-nbits">Bits por muestra (n)</label>
+                                <input type="number" class="form-control" id="pcm-nbits" value="8" min="2" max="14" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="pcm-scheme">Portadora digital interna</label>
+                                <select class="form-select" id="pcm-scheme">
+                                    <option value="BPSK">BPSK</option>
+                                    <option value="ASK">ASK</option>
+                                    <option value="FSK">FSK</option>
+                                </select>
+                            </div>
+                            <div class="checkbox-row">
+                                <input type="checkbox" id="pcm-antialias" checked>
+                                <label for="pcm-antialias">Filtro antialias previo al muestreo</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Canal y Degradaciones (Común a todos los módulos) -->
+                    <div class="control-card">
+                        <div class="control-card-header">
+                            <span>Canal e Impairments</span>
+                            <button class="btn btn-ghost btn-mini" id="btn-adjust-link" title="Compensar la pérdida calculada para fijar objetivo en RX">Ajustar Enlace</button>
+                        </div>
+                        <div class="control-card-body">
+                            <div class="form-group">
+                                <label for="chan-preset">Preset de canal</label>
+                                <select class="form-select" id="chan-preset">
+                                    <option value="ideal">AWGN ideal (sin pérdida)</option>
+                                    <option value="loss">Canal con pérdida geométrica</option>
+                                    <option value="multipath">Multitrayecto severo (eco)</option>
+                                    <option value="interference">Interferencia de tono</option>
+                                    <option value="cfo">Offset de portadora (CFO)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group" id="group-snr">
+                                <label for="chan-snr">SNR nominal (AM) <span class="unit">(dB)</span></label>
+                                <input type="number" class="form-control" id="chan-snr" value="25" min="-10" max="60" step="1">
+                            </div>
+
+                            <div class="form-group" id="group-ebn0" style="display:none;">
+                                <label for="chan-ebn0">Eb/N0 nominal (Digital) <span class="unit">(dB)</span></label>
+                                <input type="number" class="form-control" id="chan-ebn0" value="10" min="-5" max="35" step="0.5">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="chan-dist">Distancia TX-RX <span class="unit">(km)</span></label>
+                                <input type="number" class="form-control" id="chan-dist" value="0.0" min="0" max="100" step="0.5">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="chan-freq">Frecuencia de enlace <span class="unit">(MHz)</span></label>
+                                <input type="number" class="form-control" id="chan-freq" value="2450" min="1" max="60000" step="50">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="chan-extra">Atenuación extra <span class="unit">(dB)</span></label>
+                                <input type="number" class="form-control" id="chan-extra" value="0.0" min="0" max="100" step="1">
+                            </div>
+
+                            <details class="channel-accordion">
+                                <summary>Factores externos avanzados ▾</summary>
+                                <div class="channel-accordion-body">
+                                    <div class="checkbox-row">
+                                        <input type="checkbox" id="chan-multipath">
+                                        <label for="chan-multipath">Multitrayecto (eco)</label>
+                                    </div>
+                                    <div class="form-group" id="grp-mp-delay">
+                                        <label for="chan-mp-delay">Retardo eco <span class="unit">(µs)</span></label>
+                                        <input type="number" class="form-control" id="chan-mp-delay" value="1.0" min="0.1" max="20" step="0.5">
+                                    </div>
+
+                                    <div class="checkbox-row">
+                                        <input type="checkbox" id="chan-interference">
+                                        <label for="chan-interference">Interferencia senoidal</label>
+                                    </div>
+                                    <div class="form-group" id="grp-int-freq">
+                                        <label for="chan-int-freq">Frecuencia interferencia <span class="unit">(Hz)</span></label>
+                                        <input type="number" class="form-control" id="chan-int-freq" value="22000" min="100" max="200000" step="500">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="chan-cfo">Offset portadora (CFO) <span class="unit">(Hz)</span></label>
+                                        <input type="number" class="form-control" id="chan-cfo" value="0.0" min="-1000" max="1000" step="10">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="chan-pnoise">Ruido de fase <span class="unit">(rad RMS)</span></label>
+                                        <input type="number" class="form-control" id="chan-pnoise" value="0.0" min="0.0" max="0.5" step="0.01">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="chan-seed">Semilla de ruido</label>
+                                        <input type="number" class="form-control" id="chan-seed" value="1" min="1" max="999999" step="1">
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Columna de Gráficas (Plot Panels estructurados en Cards anti-colisión) -->
+                <div class="plots-column">
+                    <!-- AM Plots (6 Cards) -->
+                    <div class="plots-grid module-plots" id="plots-am">
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Recuperación de Señal Moduladora</span>
+                                <span class="plot-card-badge">m(t) vs Detectores</span>
+                            </div>
+                            <div class="plot-canvas" id="am-plot-recovery"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Señal AM Transmitida y Recibida</span>
+                                <span class="plot-card-badge">RF en Dominio del Tiempo</span>
+                            </div>
+                            <div class="plot-canvas" id="am-plot-rf"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Espectro de Frecuencia Normalizado</span>
+                                <span class="plot-card-badge">Portadora fc y Bandas Laterales</span>
+                            </div>
+                            <div class="plot-canvas" id="am-plot-spectrum"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Error de Demodulación</span>
+                                <span class="plot-card-badge">Recuperada − Original</span>
+                            </div>
+                            <div class="plot-canvas" id="am-plot-error"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Fidelidad frente a SNR Nominal</span>
+                                <span class="plot-card-badge">Curva MSE (AWGN)</span>
+                            </div>
+                            <div class="plot-canvas" id="am-plot-fidelity"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Reparto de Potencia AM</span>
+                                <span class="plot-card-badge">Portadora vs Bandas Laterales</span>
+                            </div>
+                            <div class="plot-canvas" id="am-plot-power"></div>
+                        </div>
+                    </div>
+
+                    <!-- ASK Plots (4 Cards) -->
+                    <div class="plots-grid module-plots" id="plots-ask" style="display:none;">
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Secuencia y Forma de Onda ASK / OOK</span>
+                                <span class="plot-card-badge">Primeros bits detectados</span>
+                            </div>
+                            <div class="plot-canvas" id="ask-plot-waveform"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Espectro de Frecuencia ASK</span>
+                                <span class="plot-card-badge">Lóbulos Sinc</span>
+                            </div>
+                            <div class="plot-canvas" id="ask-plot-spectrum"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Diagrama de Ojo</span>
+                                <span class="plot-card-badge">120 trazas e Intervalo Unitario</span>
+                            </div>
+                            <div class="plot-canvas" id="ask-plot-eye"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Tasa de Error de Bit (BER)</span>
+                                <span class="plot-card-badge">Teoría AWGN vs Monte Carlo</span>
+                            </div>
+                            <div class="plot-canvas" id="ask-plot-ber"></div>
+                        </div>
+                    </div>
+
+                    <!-- FSK Plots (4 Cards) -->
+                    <div class="plots-grid module-plots" id="plots-fsk" style="display:none;">
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Forma de Onda FSK</span>
+                                <span class="plot-card-badge">Transmisión de 2 Tonos</span>
+                            </div>
+                            <div class="plot-canvas" id="fsk-plot-waveform"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Frecuencia Instantánea por Bit</span>
+                                <span class="plot-card-badge">Tonos f0 y f1</span>
+                            </div>
+                            <div class="plot-canvas" id="fsk-plot-freq"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Espectro de Frecuencia FSK</span>
+                                <span class="plot-card-badge">Tonos f0 y f1</span>
+                            </div>
+                            <div class="plot-canvas" id="fsk-plot-spectrum"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Tasa de Error de Bit (BER)</span>
+                                <span class="plot-card-badge">Teoría vs Monte Carlo</span>
+                            </div>
+                            <div class="plot-canvas" id="fsk-plot-ber"></div>
+                        </div>
+                    </div>
+
+                    <!-- PCM Plots (6 Cards) -->
+                    <div class="plots-grid module-plots" id="plots-pcm" style="display:none;">
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Muestreo y Cuantificación Uniforme</span>
+                                <span class="plot-card-badge">Señal Continua vs Muestras</span>
+                            </div>
+                            <div class="plot-canvas" id="pcm-plot-sampling"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Error de Cuantificación</span>
+                                <span class="plot-card-badge">xq − x con Límites ±q/2</span>
+                            </div>
+                            <div class="plot-canvas" id="pcm-plot-qerr"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Reconstrucción Analógica</span>
+                                <span class="plot-card-badge">Original vs ZOH vs Sinc</span>
+                            </div>
+                            <div class="plot-canvas" id="pcm-plot-reconstruction"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Espectro y Límites de Nyquist</span>
+                                <span class="plot-card-badge">Detección de Aliasing</span>
+                            </div>
+                            <div class="plot-canvas" id="pcm-plot-spectrum"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Fidelidad SQNR frente a Bits</span>
+                                <span class="plot-card-badge">Curva 6.02n + 1.76 dB</span>
+                            </div>
+                            <div class="plot-canvas" id="pcm-plot-sqnr-bits"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <span class="plot-card-title">Efecto Umbral del Enlace PCM</span>
+                                <span class="plot-card-badge">SQNR vs Eb/N0</span>
+                            </div>
+                            <div class="plot-canvas" id="pcm-plot-sqnr-ebn0"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ================================================================
+             Marco Teórico (Documentation View)
+             ================================================================ -->
+        <div class="theory-wrapper" id="theory-view">
+            <article class="theory-content">
+                <h1>Marco Teórico y Fundamentos de Simulación</h1>
+                <p class="lead">Laboratorio de Comunicaciones Digitales y Analógicas · AM, ASK, FSK y PCM · Formulación matemática y consideraciones prácticas.</p>
+
+                <div class="theory-note">
+                    <strong>Alcance:</strong> Esta aplicación implementa con rigor físico y matemático cuatro técnicas de comunicación:
+                    <strong>Modulación de Amplitud (AM)</strong>, <strong>Amplitud Conmutada (ASK/OOK)</strong>, <strong>Frecuencia Conmutada (FSK)</strong> y <strong>Modulación por Pulsos Codificados (PCM)</strong>. BPSK se implementa como portadora digital del enlace PCM.
+                </div>
+
+                <h2>1. Modelo de Propagación y Canal Físico</h2>
+                <p>Las señales de RF sufren atenuación por dispersión geométrica en el espacio libre. La pérdida de trayectoria en espacio libre (FSL) se rige por la ecuación de Friis:</p>
+                <div class="theory-eq">
+                    FSL (dB) = 32.45 + 20 log₁₀(d_km) + 20 log₁₀(f_MHz)
+                </div>
+                <p>La atenuación total suma las pérdidas de espacio libre más cualquier pérdida extra por obstáculos, lluvia o cables:</p>
+                <div class="theory-eq">
+                    Atenuación_total = FSL + Atenuación_extra (dB) &nbsp;⇒&nbsp; G_lineal = 10^(-Atenuación_total / 20)
+                </div>
+                <p><strong>Principio fundamental del receptor:</strong> El canal atenúa la potencia de la señal útil transmitida, pero no atenúa el ruido térmico equivalente generado en la entrada del receptor (AWGN). Por ello, al alejarse o aumentar la atenuación, la relación señal/ruido efectiva en recepción disminuye directamente:</p>
+                <div class="theory-eq">
+                    SNR_efectiva ≈ SNR_nominal − Atenuación_total (dB)
+                </div>
+
+                <h2>2. Modulación de Amplitud (AM)</h2>
+                <p>En modulación AM, la envolvente de una portadora senoidal varía en proporción lineal directa con la señal moduladora:</p>
+                <div class="theory-eq">
+                    s(t) = V_p · [1 + m · m(t)] · sen(2π f_c t)
+                </div>
+                <p>donde <i>m = V_m / V_p</i> representa el índice de modulación.</p>
+                <ul>
+                    <li><strong>m ≤ 1 (Modulación lineal):</strong> La envolvente nunca cruza el eje cero. Un detector de envolvente (diodo rectificador + pasa-bajos) recupera la señal sin distorsión armónica.</li>
+                    <li><strong>m > 1 (Sobremodulación):</strong> La portadora experimenta inversiones de fase en los cruces por cero. El detector de envolvente recorta y distorsiona severamente. El detector coherente (multiplicación por <i>sen(2π f_c t)</i> + filtro pasa-bajos) sigue siendo lineal y recupera la señal.</li>
+                </ul>
+                <h3>Reparto de Potencia AM</h3>
+                <div class="theory-eq">
+                    P_total = P_c · (1 + m² / 2) &nbsp;&nbsp;·&nbsp;&nbsp; P_c = V_p² / 2
+                </div>
+                <p>Con <i>m = 1</i>, la portadora disipa el 66.7% de la potencia y las dos bandas laterales el 33.3% restante.</p>
+
+                <h2>3. Modulación Digital ASK / OOK</h2>
+                <p>On-Off Keying (OOK) conmuta la portadora: transmite ráfaga senoidal para el bit 1 y silencio para el bit 0:</p>
+                <div class="theory-eq">
+                    s(t) = A · b(t) · cos(2π f_c t), &nbsp;&nbsp; b(t) ∈ {0, 1}
+                </div>
+                <p>La energía media por bit es <i>E_b = A² T_b / 4</i>. La tasa de error de bit teórica bajo ruido blanco gaussiano (AWGN) es:</p>
+                <div class="theory-eq">
+                    BER_coherente = Q(√(E_b / N₀)) &nbsp;&nbsp;·&nbsp;&nbsp; BER_no_coherente = ½ exp(−E_b / (2 N₀))
+                </div>
+
+                <h2>4. Modulación Digital FSK</h2>
+                <p>Binary FSK transmite dos tonos ortogonales según el bit de entrada:</p>
+                <div class="theory-eq">
+                    f₀ = f_c − Δf &nbsp;(bit 0) &nbsp;&nbsp;·&nbsp;&nbsp; f₁ = f_c + Δf &nbsp;(bit 1) &nbsp;&nbsp;·&nbsp;&nbsp; h = 2 Δf / R_b
+                </div>
+                <p>Para <i>h = 1.0</i> los tonos presentan separación ortogonal óptima de <i>1/T_b</i> en detección no coherente por cuadratura (I/Q).</p>
+
+                <h2>5. Modulación por Pulsos Codificados (PCM)</h2>
+                <p>La conversión analógica a digital PCM comprende tres etapas sucesivas:</p>
+                <ol style="margin-left:24px; color:#F6E6B3; font-size:13px; line-height:1.6;">
+                    <li><strong>Muestreo:</strong> De acuerdo con el teorema de Nyquist-Shannon, la frecuencia de muestreo debe satisfacer <i>f_s ≥ 2 f_m</i> para evitar traslape espectral (aliasing).</li>
+                    <li><strong>Cuantificación Uniforme Midrise:</strong> El rango <i>[−V_FS, +V_FS]</i> se divide en <i>2^n</i> niveles con un paso <i>q = 2 V_FS / 2^n</i>.</li>
+                    <li><strong>Codificación y Transmisión:</strong> Cada muestra se traduce a una palabra binaria de <i>n</i> bits (MSB-first) y se modula digitalmente sobre una portadora de RF.</li>
+                </ol>
+                <p>La relación señal a ruido de cuantificación máxima teórica para una señal senoidal uniforme es:</p>
+                <div class="theory-eq">
+                    SQNR_teórica (dB) = 6.02 · n + 1.76 + 20 log₁₀(Amplitud)
+                </div>
+                <p><strong>Efecto Umbral:</strong> Cuando la relación <i>E_b/N₀</i> del enlace digital es alta, el error está dominado exclusivamente por la cuantificación. Si <i>E_b/N₀</i> cae por debajo del umbral de detección, los errores de bit alteran bits más significativos (MSB) produciendo saltos abruptos que colapsan la fidelidad de la señal reconstruida.</p>
+            </article>
+        </div>
+    </main>
+
+    <!-- App Coordinator JS Module -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
