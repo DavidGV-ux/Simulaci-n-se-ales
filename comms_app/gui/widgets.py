@@ -9,7 +9,8 @@ import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
 from PySide6.QtCore import QObject, QRunnable, QSize, Qt, Signal
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QCursor
+from PySide6.QtWidgets import QToolTip
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -91,13 +92,14 @@ class MetricCard(QFrame):
 
 
 class PlotCanvas(QWidget):
-    """Figura de matplotlib con barra de navegación discreta."""
+    """Figura de matplotlib con barra de navegación discreta e interpretación al pasar el ratón."""
 
     def __init__(self, rows: int = 2, cols: int = 2, figsize: tuple[float, float] = (10.0, 6.8)):
         super().__init__()
         self.figure = Figure(figsize=figsize, dpi=100, layout="constrained")
         self.canvas = FigureCanvasQTAgg(self.figure)
         self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.canvas.setMouseTracking(True)
         self.toolbar = NavigationToolbar2QT(self.canvas, self)
         self.toolbar.setIconSize(QSize(14, 14))
         self.toolbar.setStyleSheet("QToolBar{spacing:1px;padding:0px;}")
@@ -112,10 +114,13 @@ class PlotCanvas(QWidget):
         for ax in self.axes:
             self.clean_axis(ax)
 
+        self._hover_cid = self.canvas.mpl_connect("motion_notify_event", self._on_hover)
+        self._leave_cid = self.canvas.mpl_connect("axes_leave_event", lambda _e: QToolTip.hideText())
+
     @staticmethod
     def clean_axis(ax) -> None:
         ax.set_facecolor(SURFACE)
-        ax.grid(True, color=CHART_COLORS["grid"], alpha=0.55, linewidth=0.7)
+        ax.grid(True, color=CHART_COLORS["grid"], alpha=0.9, linewidth=0.7)
         for spine in ax.spines.values():
             spine.set_color(BORDER)
         ax.tick_params(colors=FAINT, labelsize=8.5)
@@ -124,12 +129,154 @@ class PlotCanvas(QWidget):
         ax.yaxis.label.set_color(MUTED)
 
     def reset_axes(self) -> None:
+        QToolTip.hideText()
         for ax in self.axes:
             ax.clear()
             self.clean_axis(ax)
 
     def save(self, path: str) -> None:
         self.figure.savefig(path, dpi=170, bbox_inches="tight")
+
+    # -- Interpretación al pasar el ratón -------------------------------------
+    @staticmethod
+    def _fmt_axis(value: float, label: str) -> str:
+        lab = (label or "").lower()
+        if "db" in lab or "ber" in lab or "magnitud" in lab or "sqnr" in lab or "mse" in lab:
+            if not np.isfinite(value):
+                return "—"
+            if abs(value) >= 1000 or (abs(value) > 0 and abs(value) < 1e-3):
+                return f"{value:.3g}"
+            return f"{value:.3f}".rstrip("0").rstrip(".")
+        if abs(value) >= 1e6:
+            return f"{value/1e6:.3g} M"
+        if abs(value) >= 1e4:
+            return f"{value/1e3:.3g} k"
+        if abs(value) >= 100:
+            return f"{value:.1f}"
+        if abs(value) >= 1:
+            return f"{value:.3g}"
+        if value == 0:
+            return "0"
+        return f"{value:.3g}"
+
+    @staticmethod
+    def _interpret(ax, series: str, x: float, y: float) -> str:
+        title = (ax.get_title() or "").lower()
+        s = (series or "").lower()
+        xl = (ax.get_xlabel() or "").lower()
+        yl = (ax.get_ylabel() or "").lower()
+        hints: list[str] = []
+
+        if "recuperación" in title or "reconstrucción" in title:
+            hints.append("Compara la señal original con lo recuperado/filtrado; idealmente deben coincidir.")
+        if "espectro" in title:
+            hints.append("Muestra energía por frecuencia (dB relativo al pico): picos indican componentes dominantes.")
+        if "error" in title and "cuant" not in title:
+            hints.append("Error = señal recuperada − original; cerca de 0 significa buena fidelidad.")
+        if "cuantización" in title and "error" in title:
+            hints.append("Error por redondeo al nivel discreto; idealmente acotado cerca de ±q/2.")
+        if "ber" in title:
+            hints.append("BER: fracción de bits erróneos. A mayor Eb/N0 suele bajar; la teoría es la referencia ideal en AWGN.")
+        if "fidelidad" in title or "mse" in yl:
+            hints.append("MSE mide el error cuadrático medio; valores menores indican mejor recuperación.")
+        if "ojo" in title:
+            hints.append("Diagrama de ojo: apertura vertical/horizontal grande indica mejor margen ante ruido y errores de muestreo.")
+        if "potencia" in title and "am" in title:
+            hints.append("Reparto de potencia AM: la portadora no lleva información; las bandas laterales sí.")
+        if "frecuencia instant" in title or "frecuencia estimada" in title:
+            hints.append("En FSK cada bit debería acercarse a f0 o f1; desviaciones indican ruido, offset o ISI.")
+        if "umbral" in title or "enlace pcm" in title:
+            hints.append("Por debajo del umbral, errores de bit degradan la señal reconstruida más que la cuantización.")
+        if "sqnr" in title and "bits" in xl:
+            hints.append("Aumentar bits reduce el paso de cuantificación; cada bit suma ~6 dB de SQNR ideal.")
+        if "alias" in s or (np.isfinite(x) and "muestreo" in title and "espectro" in title):
+            hints.append("Si fm supera Nyquist (fs/2) o falta antialias, aparecen componentes plegadas (aliasing).")
+        if "envolvente" in s and "recu" in title:
+            hints.append("Detector de envolvente: simple; funciona bien con m≤1 y buena SNR.")
+        if "coherente" in s and "recu" in title:
+            hints.append("Detector coherente: requiere sincronía de portadora; suele ser más robusto.")
+        if "rx" in s and ("forma de onda" in title or "rf" in title or "transmitida" in title):
+            hints.append("RX incluye atenuación/ruido/factores del canal; puede verse escalada respecto a TX según el caso.")
+        if "tx" in s and ("forma de onda" in title or "rf" in title or "transmitida" in title):
+            hints.append("TX es la señal modulada antes del canal.")
+        if "teoría" in s:
+            hints.append("Curva teórica ideal; diferencias con la simulada se deben a Monte Carlo, canal o parámetros.")
+        if "actual" in s:
+            hints.append("Punto de operación con la configuración actual (incluye pérdidas/factores activos).")
+
+        if not hints:
+            hints.append("Usa la leyenda y los ejes para relacionar la serie con el modelo; cambia un parámetro y observa el efecto.")
+        # Máximo 2 pistas para no saturar.
+        return " ".join(hints[:2])
+
+    def _on_hover(self, event) -> None:
+        if event.inaxes is None or event.x is None or event.y is None:
+            QToolTip.hideText()
+            return
+        ax = event.inaxes
+        best = None  # (dist2, series, x, y)
+        mx, my = event.x, event.y
+        for line in ax.get_lines():
+            label = line.get_label() or ""
+            if label.startswith("_"):
+                label = ""
+            xdata = line.get_xdata(orig=False)
+            ydata = line.get_ydata(orig=False)
+            if xdata is None or ydata is None or len(xdata) == 0:
+                continue
+            try:
+                pts = ax.transData.transform(np.column_stack([np.asarray(xdata, float), np.asarray(ydata, float)]))
+            except Exception:
+                continue
+            dx = pts[:, 0] - mx
+            dy = pts[:, 1] - my
+            i = int(np.argmin(dx * dx + dy * dy))
+            d2 = float(dx[i] * dx + dy[i] * dy)
+            if best is None or d2 < best[0]:
+                try:
+                    best = (d2, label, float(xdata[i]), float(ydata[i]))
+                except Exception:
+                    pass
+        # Colecciones (scatter/step puede no aplicar; soporte básico)
+        if best is None or best[0] > 18.0**2:
+            for coll in ax.collections:
+                label = coll.get_label() or ""
+                if label.startswith("_"):
+                    label = ""
+                try:
+                    offsets = coll.get_offsets()
+                except Exception:
+                    continue
+                if offsets is None or len(offsets) == 0:
+                    continue
+                try:
+                    pts = ax.transData.transform(offsets)
+                    dx = pts[:, 0] - mx
+                    dy = pts[:, 1] - my
+                    i = int(np.argmin(dx * dx + dy * dy))
+                    d2 = float(dx[i] * dx + dy[i] * dy)
+                    if best is None or d2 < best[0]:
+                        best = (d2, label, float(offsets[i, 0]), float(offsets[i, 1]))
+                except Exception:
+                    continue
+        if best is None or best[0] > 22.0**2:
+            QToolTip.hideText()
+            return
+        _, series, x, y = best
+        title = ax.get_title() or "Gráfica"
+        xl = ax.get_xlabel() or "eje X"
+        yl = ax.get_ylabel() or "eje Y"
+        sx = self._fmt_axis(x, xl)
+        sy = self._fmt_axis(y, yl)
+        head = series if series else "punto"
+        interp = self._interpret(ax, series, x, y)
+        text = (
+            f"<b>{title}</b><br>"
+            f"<span style='color:#526277'>{head}</span><br>"
+            f"{xl}: <b>{sx}</b> · {yl}: <b>{sy}</b><br>"
+            f"<span style='color:#526277'>{interp}</span>"
+        )
+        QToolTip.showText(QCursor.pos(), text, self.canvas)
 
 
 # ---------------------------------------------------------------------------
