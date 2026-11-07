@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Simulador de Señales · AM, ASK, FSK y PCM</title>
-  <meta name="description" content="Simulador interactivo de comunicaciones: AM, ASK, FSK y PCM con canal, ruido y factores externos." />
+  <meta name="description" content="Simulador de comunicaciones AM, ASK, FSK y PCM ejecutado en el navegador con el motor Python (NumPy/SciPy vía Pyodide)." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,7 +16,8 @@
     <div class="wrap">
       <div class="brand"><div class="logo">∿</div><div>Señales <span style="color:var(--faint);font-weight:600">· Laboratorio</span></div></div>
       <nav>
-        <a href="#inicio">Inicio</a><a href="#modulos">Módulos</a><a href="#simulador">Simulador</a><a href="#guias">Guías</a><a href="#galeria">Galería</a>
+        <a href="#inicio">Inicio</a><a href="#simulador">Simulador</a><a href="#guias">Guías</a><a href="#galeria">Galería</a>
+        <a href="https://github.com/DavidGV-ux/Simulaci-n-se-ales" target="_blank" rel="noopener">GitHub</a>
       </nav>
     </div>
   </header>
@@ -26,81 +27,79 @@
       <div class="hero-grid">
         <div>
           <h1>Simulador de comunicaciones<br><span style="color:var(--accent)">AM, ASK, FSK y PCM</span></h1>
-          <p class="lead">Front interactivo en HTML, CSS y JavaScript para explorar modulación analógica/digital, canal, ruido y factores externos. Incluye gráficas con interpretación al pasar el ratón y guía minuciosa de cada simulación.</p>
+          <p class="lead">Ejecución online del motor de simulación Python (NumPy/SciPy vía Pyodide) con interfaz HTML/CSS/JS. Mismas gráficas y lógica que la aplicación de escritorio: canal, ruido, factores externos, métricas e interpretación al pasar el ratón.</p>
           <div class="pills">
-            <span class="pill">AM</span><span class="pill">ASK / OOK</span><span class="pill">FSK</span><span class="pill">PCM</span><span class="pill">AWGN + FSL</span><span class="pill">Interferencia</span><span class="pill">Multitrayecto</span><span class="pill">CFO / clip</span>
+            <span class="pill">AM</span><span class="pill">ASK / OOK</span><span class="pill">FSK</span><span class="pill">PCM</span><span class="pill">FSL + AWGN</span><span class="pill">Multitrayecto</span><span class="pill">Interferencia</span><span class="pill">CFO / fase / clip</span><span class="pill">Curvas BER/SQNR</span>
           </div>
           <div class="actions">
             <a class="btn primary" href="#simulador">Abrir simulador</a>
-            <a class="btn" href="https://github.com/DavidGV-ux/Simulaci-n-se-ales" target="_blank" rel="noopener">Repositorio</a>
           </div>
         </div>
         <div class="hero-side">
-          <div class="card mini"><h3>Interactivo</h3><p>Cambia parámetros, ejecuta la simulación y observa formas de onda, espectros, BER, SQNR y recuperación.</p></div>
-          <div class="card mini"><h3>Interpretación</h3><p>Al pasar el ratón sobre cada gráfica verás serie, valores e interpretación: qué significa y cómo leerla.</p></div>
-          <div class="card mini"><h3>Python + Web</h3><p>El repositorio incluye la app de escritorio (PySide6/NumPy/SciPy) y esta versión web para GitHub Pages.</p></div>
+          <div class="card mini"><h3>Motor real (Pyodide)</h3><p>Las simulaciones usan el mismo <code>comms_app.core</code> de Python: modelos, canal, detectores y curvas de análisis.</p></div>
+          <div class="card mini"><h3>Gráficas completas</h3><p>AM (6), ASK (4, ojo+BER), FSK (4, frecuencia/bit+BER), PCM (6, SQNR vs bits/umbral) con interpretación al pasar el ratón.</p></div>
+          <div class="card mini"><h3>Primera carga</h3><p>Descarga Pyodide + NumPy + SciPy (puede tardar). Las simulaciones siguientes se ejecutan en el navegador.</p></div>
         </div>
-      </div>
-    </section>
-
-    <section id="modulos">
-      <div class="section-title"><h2>Módulos</h2><p>Solo los requeridos: AM, ASK, FSK y PCM.</p></div>
-      <div class="grid-4">
-        <div class="card module-card" data-target="am"><div class="tag">ANALÓGICA</div><h3>AM</h3><p>Portadora modulada en amplitud, índice m, potencia, envolvente y detección coherente.</p></div>
-        <div class="card module-card" data-target="ask"><div class="tag">DIGITAL</div><h3>ASK / OOK</h3><p>Bits como presencia/ausencia de portadora, umbral, forma de onda, espectro y BER.</p></div>
-        <div class="card module-card" data-target="fsk"><div class="tag">DIGITAL</div><h3>FSK</h3><p>Bits como tonos f0/f1, índice h, frecuencia estimada, espectro y BER.</p></div>
-        <div class="card module-card" data-target="pcm"><div class="tag">DIGITALIZACIÓN</div><h3>PCM</h3><p>Muestreo, cuantificación, codificación, enlace digital y reconstrucción con efecto umbral.</p></div>
       </div>
     </section>
 
     <section id="simulador">
-      <div class="section-title"><h2>Simulador interactivo</h2><p>Ajusta valores, pulsa <b>Simular</b> y pasa el ratón por las gráficas.</p></div>
+      <div class="section-title"><h2>Simulador</h2><p>Selecciona módulo, ajusta parámetros y pulsa <b>Simular</b>.</p></div>
+
+      <div id="bootCard" class="card pad" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="spinner" id="bootSpin" aria-hidden="true"></div>
+          <div style="flex:1">
+            <div style="font-weight:700" id="bootTitle">Cargando motor de simulación…</div>
+            <div style="color:var(--muted);font-size:13px" id="bootMsg">Inicializando Pyodide, NumPy, SciPy y el núcleo <code>comms_app.core</code>.</div>
+          </div>
+          <button class="btn" id="bootRetry" style="display:none">Reintentar</button>
+        </div>
+        <div class="progress" id="bootProgress"><div class="bar" id="bootBar"></div></div>
+      </div>
+
       <div class="card sim">
         <div class="sim-head">
-          <div><h3 id="simTitle">AM — Modulación de amplitud</h3><p id="simDesc">La amplitud de la portadora sigue la señal moduladora. Compara detector de envolvente y coherente.</p></div>
+          <div><h3 id="simTitle">AM — Modulación de amplitud</h3><p id="simDesc">Cargando…</p></div>
           <div class="row">
-            <select id="moduleSelect" aria-label="Módulo">
+            <select id="moduleSelect" aria-label="Módulo" disabled>
               <option value="am">AM</option><option value="ask">ASK / OOK</option><option value="fsk">FSK</option><option value="pcm">PCM</option>
             </select>
-            <button class="btn primary" id="runBtn">Simular</button>
-            <button class="btn" id="resetBtn">Reiniciar</button>
+            <button class="btn primary" id="runBtn" disabled>Simular</button>
+            <button class="btn" id="resetBtn" disabled>Reiniciar</button>
           </div>
         </div>
         <div class="sim-body">
           <aside class="controls" id="controls"></aside>
           <div class="results">
+            <div id="statusBar" class="status-bar">Esperando motor…</div>
             <div class="metrics" id="metrics"></div>
             <div id="charts"></div>
             <div class="interp" id="globalInterp"></div>
           </div>
         </div>
       </div>
-      <div class="note warn" style="margin-top:10px"><b>Nota:</b> esta es una implementación web educativa alineada con los modelos del simulador Python. La app de escritorio (NumPy/SciPy/PySide6) contiene la simulación/validación completa del repositorio.</div>
     </section>
 
     <section id="guias">
-      <div class="section-title"><h2>Guías e interpretación</h2><p>Cómo funciona, por qué ciertos valores y cómo leer cada gráfica.</p></div>
-      <details open><summary>Factores externos y canal</summary><div class="details-body">
+      <div class="section-title"><h2>Guías e interpretación</h2><p>Cómo funciona cada simulación, parámetros y lectura de gráficas.</p></div>
+      <details open><summary>Canal y factores externos</summary><div class="details-body">
         <ul>
-          <li><b>FSL</b>: <code>32.45 + 20·log10(d_km) + 20·log10(f_MHz)</code>. Más distancia o frecuencia ⇒ más pérdida.</li>
-          <li><b>Atenuación extra</b>: cables, obstáculos, lluvia, desapuntamiento. Se suma a FSL.</li>
-          <li><b>SNR/EbN0 nominal vs efectivo</b>: el nominal es referencia TX; el canal atenúa la señal pero no el ruido, por eso la calidad efectiva en RX cae con la pérdida.</li>
-          <li><b>AWGN</b>: ruido blanco gaussiano; causa errores y distorsión de recuperación.</li>
-          <li><b>Multitrayecto</b>: eco con retardo/ganancia/fase; puede crear ISI o cancelaciones.</li>
-          <li><b>Interferencia</b>: tono en otra frecuencia; más dañina cerca de la portadora/información.</li>
-          <li><b>CFO</b>: offset de frecuencia TX–RX; degrada detección coherente/fase.</li>
-          <li><b>Clip</b>: saturación no lineal; genera armónicos y errores.</li>
+          <li><b>FSL</b>: <code>32.45 + 20·log10(d_km) + 20·log10(f_MHz)</code>. Más distancia/frecuencia ⇒ más pérdida.</li>
+          <li><b>Atenuación extra</b>: cables, obstáculos, lluvia, desapuntamiento (se suma a FSL).</li>
+          <li><b>Nominal TX vs efectivo RX</b>: SNR/EbN0 nominales son referencia en TX; el canal atenúa la señal pero no el ruido ⇒ la calidad efectiva cae con la pérdida.</li>
+          <li><b>AWGN</b>: ruido blanco gaussiano. <b>Multitrayecto</b>: eco (ISI/cancelación). <b>Interferencia</b>: tono. <b>CFO/fase</b>: deriva de oscilador. <b>Clip</b>: no linealidad.</li>
         </ul>
       </div></details>
-      <details><summary>AM — interpretación a fondo</summary><div class="details-body">Modelo: <code>Vp·[1+m·m(t)]·sin(2πfc t)</code>. Potencia: <code>Pt/Pc=1+m²/2</code>. <b>m≤1</b> permite envolvente limpia; <b>m&gt;1</b> sobremodula (distorsiona envolvente). Gráficas: <b>recuperación</b> (original vs envolvente/coherente), <b>RF</b> (TX/RX), <b>espectro</b> (portadora y bandas laterales en fc±fm), <b>error</b> (recuperada−original), <b>MSE vs SNR</b> (fidelidad) y <b>reparto de potencia</b>. SNR nominal se interpreta en banda <code>2·fm</code>.</div></details>
-      <details><summary>ASK/OOK — interpretación a fondo</summary><div class="details-body">Bit 1 = portadora, bit 0 = ausencia (OOK). <code>Eb</code> promedio depende de amplitud y Tb. La portadora se elige coherente con Rb (ciclos enteros por bit) para decisiones estables. Gráficas: <b>forma de onda</b> (bits detectados), <b>espectro</b> (lóbulos sinc alrededor de fc, ancho ~2Rb), y <b>BER</b>. Mayor Eb/N0 ⇒ menor BER; atenuación/interferencia/timing degradan.</div></details>
-      <details><summary>FSK — interpretación a fondo</summary><div class="details-body">Bit 0→f0, bit 1→f1, con <code>Δf=h·Rb/2</code>. Índice <b>h</b> controla separación/ortogonalidad; Carson: <code>B≈2(Δf+Rb)</code>. Gráficas: <b>forma de onda</b>, <b>frecuencia estimada</b> (debe saltar entre f0/f1), <b>espectro</b> (energía en f0/f1) y <b>BER</b>. CFO o ruido ensucian la estimación de frecuencia.</div></details>
-      <details><summary>PCM — interpretación a fondo</summary><div class="details-body">Cadena: antialias → muestreo <code>fs</code> (Nyquist: fs&gt;2fm) → cuantificación uniforme <code>n</code> bits (<code>SQNR≈6.02n+1.76 dB</code> a plena escala, sin recorte) → codificación → transmisión digital (<code>Rb=fs·n</code>) → reconstrucción. Gráficas: <b>muestreo/cuantificación</b>, <b>error ±q/2</b>, <b>reconstrucción</b> (ZOH vs sinc/ideal), <b>espectro/aliasing</b> (Nyquist fs/2), <b>SQNR vs bits</b> y <b>umbral</b> (a Eb/N0 bajo, errores de bit dominan sobre cuantificación).</div></details>
-      <div class="note">Para la explicación completa y minuciosa (todas las gráficas, parámetros, limitaciones), consulta el <a href="https://github.com/DavidGV-ux/Simulaci-n-se-ales#gu%C3%ADa-minuciosa-c%C3%B3mo-funciona-cada-simulaci%C3%B3n-valores-canal-y-gr%C3%A1ficas" target="_blank" rel="noopener">README del repositorio</a>.</div>
+      <details><summary>AM (6 gráficas)</summary><div class="details-body">Recuperación (original/envolvente/coherente), RF TX/RX, espectro TX/RX (fc, fc±fm), error, fidelidad MSE vs SNR (AWGN) con punto actual, y reparto de potencia (Pt/Pc). SNR nominal en banda 2·fm; m&gt;1 distorsiona envolvente.</div></details>
+      <details><summary>ASK / OOK (4 gráficas)</summary><div class="details-body">Forma de onda TX/RX + bits detectados, espectro (lóbulos sinc, ~2Rb), diagrama de ojo + umbral, BER teórica vs Monte Carlo + punto actual. Portadora ajustada a ciclos enteros/bit; soporta detector coherente/envolvente, timing y error AGC.</div></details>
+      <details><summary>FSK (4 gráficas)</summary><div class="details-body">Forma de onda, frecuencia estimada por bit (f0/f1, Δf=h·Rb/2), espectro, BER teórica vs Monte Carlo. Detector coherente o no coherente (I/Q).</div></details>
+      <details><summary>PCM (6 gráficas)</summary><div class="details-body">Muestreo/cuantificación, error ±q/2, reconstrucción (original/ZOH/sinc), espectro/aliasing (Nyquist fs/2), SQNR vs bits, y umbral SQNR vs Eb/N0. Rb=fs·n; a Eb/N0 bajo dominan errores de bit sobre cuantificación.</div></details>
+      <div class="note">Referencia completa: <a href="https://github.com/DavidGV-ux/Simulaci-n-se-ales#gu%C3%ADa-minuciosa-c%C3%B3mo-funciona-cada-simulaci%C3%B3n-valores-canal-y-gr%C3%A1ficas" target="_blank" rel="noopener">README del repositorio</a>.</div>
     </section>
 
     <section id="galeria">
-      <div class="section-title"><h2>Galería (app Python)</h2><p>Capturas de la aplicación de escritorio y escenarios de canal.</p></div>
+      <div class="section-title"><h2>Galería (app Python)</h2><p>Capturas de referencia de la aplicación de escritorio.</p></div>
       <div class="gallery">
         <figure><img loading="lazy" src="assets/validation/page_0.png" alt="AM"/><figcaption>AM</figcaption></figure>
         <figure><img loading="lazy" src="assets/validation/page_1.png" alt="ASK"/><figcaption>ASK / OOK</figcaption></figure>
@@ -112,11 +111,10 @@
     </section>
 
     <footer class="footer wrap">
-      <p>Simulador AM/ASK/FSK/PCM · HTML/CSS/JS + Python (PySide6/NumPy/SciPy). <a href="https://github.com/DavidGV-ux/Simulaci-n-se-ales" target="_blank" rel="noopener">GitHub</a>.</p>
+      <p>Simulador AM/ASK/FSK/PCM · Motor <code>comms_app.core</code> (Python/NumPy/SciPy) ejecutado con Pyodide + UI HTML/CSS/JS. <a href="https://github.com/DavidGV-ux/Simulaci-n-se-ales" target="_blank" rel="noopener">GitHub</a>.</p>
     </footer>
   </main>
 
-  <script src="sim.js"></script>
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
