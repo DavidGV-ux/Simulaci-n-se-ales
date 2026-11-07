@@ -34,9 +34,11 @@ def band_snr_db(ebn0_db: float, rb: float, bandwidth_hz: float) -> float:
 def ber_theory(scheme: str, ebn0_db, detector: str = "coherent"):
     """BER teórica en AWGN para los esquemas implementados.
 
-    ASK/OOK coherente, BFSK ortogonal coherente: Q(sqrt(Eb/N0)).
+    OOK/ASK coherente (bits equiprobables, Eb = energía promedio por bit):
+        Pb = Q(sqrt(2*Eb/N0)).
     BPSK: Q(sqrt(2 Eb/N0)).
-    ASK/OOK y BFSK no coherentes: 0.5 exp(-Eb/(2 N0)).
+    OOK/ASK y BFSK no coherentes: 0.5 exp(-Eb/(2 N0)).
+    BFSK ortogonal coherente: Q(sqrt(Eb/N0)).
     """
     g = 10.0 ** (np.asarray(ebn0_db, dtype=float) / 10.0)
     scheme = scheme.upper()
@@ -44,7 +46,9 @@ def ber_theory(scheme: str, ebn0_db, detector: str = "coherent"):
     if scheme == "ASK":
         if noncoherent:
             return 0.5 * np.exp(-g / 2.0)
-        return qfunc(np.sqrt(g))
+        # OOK coherente con bits equiprobables: Eb = A²·Tb/4 (energía promedio).
+        # Pb = Q(sqrt(2·Eb/N0)).
+        return qfunc(np.sqrt(2.0 * g))
     if scheme == "BPSK":
         return qfunc(np.sqrt(2.0 * g))
     if scheme == "FSK":
@@ -329,7 +333,7 @@ def simulate_fsk(cfg: FSKConfig) -> DigitalResult:
             "h": float(cfg.modulation_index),
             "bandwidth_hz": 2.0 * (df + cfg.rb),
             "snr_band_db": band_snr_db(report.ebn0_eff_db, cfg.rb, 2.0 * (df + cfg.rb)),
-            "orthogonal": bool(abs(cfg.modulation_index - 1.0) < 0.05 or abs(cfg.modulation_index - 0.5) < 0.05),
+            "orthogonal": bool(abs(cfg.modulation_index - 1.0) < 0.05),
             "detector": cfg.detector,
         },
     )

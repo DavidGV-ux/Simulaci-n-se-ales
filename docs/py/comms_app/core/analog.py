@@ -111,8 +111,13 @@ def simulate_am(cfg: AMConfig) -> AMResult:
     carrier = np.sin(2.0 * np.pi * cfg.fc * t)
     tx = cfg.Vp * (1.0 + cfg.m * msg) * carrier
 
-    # La SNR nominal de AM se define en la banda de la señal (2·fm).
-    cfg.channel.noise_bandwidth_hz = max(2.0 * cfg.fm, 1.0)
+    # La SNR nominal de AM se define en la banda RF de la señal (2·B_m).
+    # Para una moduladora senoidal, B_m = fm; para señales con armónicos
+    # (cuadrada, chirp, dos tonos, CSV) se usa el ancho efectivo del mensaje.
+    from .signals import signal_bandwidth
+    msg_bw = signal_bandwidth(msg, cfg.fs)
+    am_bw = max(2.0 * msg_bw, 2.0 * cfg.fm, 1.0)
+    cfg.channel.noise_bandwidth_hz = am_bw
     rx, report, clean = apply_channel(
         tx,
         cfg.fs,

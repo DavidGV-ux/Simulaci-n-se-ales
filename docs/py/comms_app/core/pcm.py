@@ -128,6 +128,8 @@ def simulate_pcm(cfg: PCMConfig) -> PCMResult:
     )
 
     if cfg.antialias and cfg.fs_sample < fs_analog:
+        # Filtro antialias: corte por debajo de Nyquist (fs_sample/2)
+        # para atenuar componentes que causarían aliasing.
         x_analog_f = lowpass(x_analog, fs_analog, 0.45 * cfg.fs_sample, order=6)
     else:
         x_analog_f = x_analog
