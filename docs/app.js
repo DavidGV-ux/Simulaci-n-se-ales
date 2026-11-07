@@ -504,13 +504,13 @@ function renderDigital(r, scheme) {
   const curX = r.ebn0_eff_db;
   const curY = ber > 0 ? ber : floor;
   const bds = [
-    { label: 'teoría', data: thPts, borderColor: '#64748b', borderWidth: 1.4, pointRadius: 0 },
+    { label: (scheme === 'ASK' && ((ex.detector || '').toLowerCase()) === 'envelope') ? 'teoría · coherente (ASK envolvente)' : 'teoría', data: thPts, borderColor: '#64748b', borderWidth: 1.4, pointRadius: 0 },
     { label: 'Monte Carlo', data: simPts, borderColor: '#0891b2', borderWidth: 1.1, pointRadius: 3 },
   ];
   if (isFinite(curX)) bds.push({ label: 'actual', data: [{x:curX,y:Math.max(curY,1e-7)}], type:'scatter', backgroundColor:'#db2777', pointRadius:5, showLine:false });
   mkChart(grid, `BER · ${cur.nbits||''} bits por punto`, 'line', { datasets: bds },
     baseOpts('BER', 'Eb/N0 (dB)', 'BER', { scales:{ y:{ type:'logarithmic', min:1e-6, max:1, title:{display:true,text:'BER'} } } }),
-    'BER simulada (Monte Carlo, AWGN limpio) vs teoría. Punto actual = configuración vigente (pérdidas/factores).');
+    (scheme === 'ASK' && ((ex.detector || '').toLowerCase()) === 'envelope') ? 'BER del detector de envolvente vs referencia coherente. Punto actual = configuración vigente (pérdidas/factores).' : 'BER simulada (Monte Carlo, AWGN limpio) vs teoría. Punto actual = configuración vigente (pérdidas/factores).');
   $('#globalInterp').innerHTML = `<b>Lectura ${scheme}:</b> BER=${Number(ber).toExponential(2)} (Eb/N0 ef. ${db(r.ebn0_eff_db)}). ${scheme==='FSK'?`h=${fmt(ex.h,3)}, Δf=${fmt((ex.df||0)/1e3,3)} kHz, BW≈${fmt((ex.bandwidth_hz||0)/1e3,3)} kHz.`:`Detector ${ex.detector||''}, portadora ${fmt((ex.fc||0)/1e3,4)} kHz.`} Atenuación total ${fmt(rep.total_atten_db,3)} dB.`;
 }
 

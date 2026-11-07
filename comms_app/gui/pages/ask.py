@@ -227,7 +227,9 @@ class ASKPage(SimulationPage):
         # 4) BER --------------------------------------------------------------
         ax = axes[3]
         e = curve["ebn0_db"]
-        ax.semilogy(e, np.maximum(curve["ber_theory"], 1e-8), color=CHART_COLORS["theory"], lw=1.4, label="teoría")
+        ask_env = str(cfg.detector).lower() == "envelope"
+        theory_label = "teoría (coherente)" if ask_env else "teoría"
+        ax.semilogy(e, np.maximum(curve["ber_theory"], 1e-8), color=CHART_COLORS["theory"], lw=1.4, label=theory_label)
         measured = np.maximum(curve["ber_sim"], 0.5 / curve["nbits"])
         ax.semilogy(e, measured, color=CHART_COLORS["measured"], marker="o", ms=3.2, lw=1.1, label="Monte Carlo")
         ebn0_eff = res.ebn0_eff_db

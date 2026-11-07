@@ -206,7 +206,11 @@ def safe_eval_signal(expr: str, t: np.ndarray) -> np.ndarray:
                 raise ValueError("Función no permitida")
             if node.keywords:
                 raise ValueError("No se permiten argumentos con nombre")
-            return _ALLOWED_FUNCS[node.func.id](*[_eval(a) for a in node.args])
+            args = [_eval(a) for a in node.args]
+            func_name = node.func.id
+            if func_name == "heaviside" and len(args) != 2:
+                raise ValueError("heaviside requiere dos argumentos: heaviside(t, umbral)")
+            return _ALLOWED_FUNCS[func_name](*args)
         raise ValueError(f"Expresión no permitida: {type(node).__name__}")
 
     value = _eval(tree)

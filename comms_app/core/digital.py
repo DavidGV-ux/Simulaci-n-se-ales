@@ -34,10 +34,10 @@ def band_snr_db(ebn0_db: float, rb: float, bandwidth_hz: float) -> float:
 def ber_theory(scheme: str, ebn0_db, detector: str = "coherent"):
     """BER teórica en AWGN para los esquemas implementados.
 
-    OOK/ASK coherente (bits equiprobables, Eb = energía promedio por bit):
+    ASK/OOK coherente (bits equiprobables, Eb = energía promedio por bit):
         Pb = Q(sqrt(2*Eb/N0)).
     BPSK: Q(sqrt(2 Eb/N0)).
-    OOK/ASK y BFSK no coherentes: 0.5 exp(-Eb/(2 N0)).
+    BFSK no coherente: 0.5 exp(-Eb/(2 N0)).
     BFSK ortogonal coherente: Q(sqrt(Eb/N0)).
     """
     g = 10.0 ** (np.asarray(ebn0_db, dtype=float) / 10.0)
