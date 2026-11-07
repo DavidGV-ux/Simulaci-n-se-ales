@@ -1,0 +1,25 @@
+# Python / entorno
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# macOS / editores
+.DS_Store
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Salidas locales
+/tmp/
+/private/tmp/
+*.log
+
+# Datos fuente grandes / prototipos locales
+*.pdf
+comms_sim.py
