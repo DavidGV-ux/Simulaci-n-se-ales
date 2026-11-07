@@ -138,7 +138,10 @@ def apply_channel(
         y = np.real(hilbert(y) * np.exp(1j * phi))
 
     if cfg.interference and cfg.int_freq_hz > 0:
-        # Amplitud de interferencia relativa a la señal de referencia.
+        # Amplitud de interferencia relativa a la senal transmitida (x).
+        # Decision de modelado: se referencia a la senal de entrada; para una
+        # senal mas realista se podria expresar relativa a la senal atenuada
+        # (y = gain*x) o en potencia absoluta. Se documenta el criterio usado.
         ref_rms = float(np.sqrt(np.mean(x**2))) or 1.0
         amp = ref_rms * 10.0 ** (cfg.int_amp_db / 20.0)
         y = y + amp * np.cos(2.0 * np.pi * cfg.int_freq_hz * t + 0.37)

@@ -13,7 +13,7 @@ from typing import Sequence
 
 import numpy as np
 
-from .analog import AMConfig, simulate_am
+from .analog import AMConfig, am_noise_bandwidth_hz, simulate_am
 from .channel import ChannelConfig
 from .digital import (
     ASKConfig,
@@ -45,7 +45,7 @@ def am_fidelity_curve(
         c = copy.deepcopy(cfg)
         ch = _clean_channel(cfg.channel.seed)
         ch.snr_db = float(snr)
-        ch.noise_bandwidth_hz = max(2.0 * cfg.fm, 1.0)
+        ch.noise_bandwidth_hz = am_noise_bandwidth_hz(cfg)
         c.channel = ch
         r = simulate_am(c)
         mse_env[i] = r.metrics["mse_env"]
@@ -83,8 +83,14 @@ def digital_ber_curve(
         c.channel.ebn0_db = float(ebn0)
         r = functions[scheme](c)
         measured[i] = r.ber
-    detector = getattr(cfg, "detector", "coherent")
-    theory = np.asarray(ber_theory(scheme, ebn0_values, detector), dtype=float)
+    detector = str(getattr(cfg, "detector", "coherent") or "coherent").lower()
+    if scheme == "ASK" and detector.startswith(("env", "non", "no")):
+        # ASK/OOK con detector de envolvente/no coherente: no existe forma
+        # cerrada de la BER teoria. Se usa la referencia coherente
+        # (Qb = Q(sqrt(2*Eb/N0))) para dibujar la recta de comparacion.
+        theory = np.asarray(ber_theory(scheme, ebn0_values, "coherent"), dtype=float)
+    else:
+        theory = np.asarray(ber_theory(scheme, ebn0_values, detector), dtype=float)
     return {
         "ebn0_db": ebn0_values,
         "ber_sim": measured,
@@ -157,12 +163,12 @@ def pcm_ber_ebn0_curve(
     for i, ebn0 in enumerate(ebn0_values):
         c = copy.deepcopy(cfg)
         c.ebn0_db = float(ebn0)
-        c.channel = _clean_channel(cfg.seed)
         # Repite con semillas distintas para reducir la varianza.
         total_bits = 0
         total_errors = 0
         for k in range(4):
-            c.seed = int(cfg.seed + 101 * k)
+            # Semilla por subiteracion (la semilla debe ir al canal).
+            c.channel = _clean_channel(cfg.seed + 101 * k)
             r = simulate_pcm(c)
             total_bits += r.nbits_total
             total_errors += r.errors

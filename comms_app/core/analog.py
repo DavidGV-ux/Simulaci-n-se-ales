@@ -65,6 +65,34 @@ def am_power(m: float) -> tuple[float, float]:
     return ratio, 1.0 / ratio
 
 
+def am_noise_bandwidth_hz(cfg: AMConfig) -> float:
+    """Ancho de banda de ruido del receptor AM: 2·B_m efectivo (mín. 2·fm).
+
+    Para una moduladora senoidal B_m = fm; para señales con varios componentes
+    (cuadrada, chirp, dos tonos, CSV, fórmula) se usa el ancho efectivo del
+    mensaje calculado desde el espectro.
+    """
+    from .signals import generate_waveform, signal_bandwidth, time_vector
+
+    t = time_vector(cfg.fs, cfg.duration)
+    msg = generate_waveform(
+        cfg.waveform,
+        t,
+        amplitude=1.0,
+        frequency=cfg.fm,
+        phase_deg=cfg.phase_deg,
+        duty=cfg.duty,
+        f_end=cfg.f_end,
+        formula=cfg.formula,
+        csv_t=cfg.csv_t,
+        csv_x=cfg.csv_x,
+        normalize=True,
+        remove_dc=True,
+    )
+    msg_bw = signal_bandwidth(msg, cfg.fs)
+    return max(2.0 * msg_bw, 2.0 * cfg.fm, 1.0)
+
+
 def _bandpass_fft(x: np.ndarray, fs: float, center: float, width: float) -> np.ndarray:
     """Filtro de RF ideal (brick-wall) alrededor de la portadora.
 
@@ -112,11 +140,7 @@ def simulate_am(cfg: AMConfig) -> AMResult:
     tx = cfg.Vp * (1.0 + cfg.m * msg) * carrier
 
     # La SNR nominal de AM se define en la banda RF de la señal (2·B_m).
-    # Para una moduladora senoidal, B_m = fm; para señales con armónicos
-    # (cuadrada, chirp, dos tonos, CSV) se usa el ancho efectivo del mensaje.
-    from .signals import signal_bandwidth
-    msg_bw = signal_bandwidth(msg, cfg.fs)
-    am_bw = max(2.0 * msg_bw, 2.0 * cfg.fm, 1.0)
+    am_bw = am_noise_bandwidth_hz(cfg)
     cfg.channel.noise_bandwidth_hz = am_bw
     rx, report, clean = apply_channel(
         tx,
@@ -129,7 +153,7 @@ def simulate_am(cfg: AMConfig) -> AMResult:
     # Filtro de RF del receptor: conserva las bandas laterales de la señal y
     # limita el ruido que entra al detector. Se usa un ancho algo mayor que
     # 2·fm para no recortar los bordes de las bandas laterales.
-    b_if = min(max(2.2 * cfg.fm, 1.0), max(0.1 * cfg.fm, 0.96 * cfg.fs - 2.0 * cfg.fc))
+    b_if = min(max(1.2 * am_bw, 1.0), max(0.1 * cfg.fm, 0.96 * cfg.fs - 2.0 * cfg.fc))
     rx_if = _bandpass_fft(rx, cfg.fs, cfg.fc, b_if)
 
     # Detector de envolvente: |analítica| + pasa-bajos.

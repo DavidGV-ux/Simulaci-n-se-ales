@@ -45,9 +45,16 @@ def ber_theory(scheme: str, ebn0_db, detector: str = "coherent"):
     noncoherent = detector.lower().startswith(("non", "no", "env"))
     if scheme == "ASK":
         if noncoherent:
-            return 0.5 * np.exp(-g / 2.0)
-        # OOK coherente con bits equiprobables: Eb = A²·Tb/4 (energía promedio).
-        # Pb = Q(sqrt(2·Eb/N0)).
+            # OOK con detector de envolvente / no coherente: no existe forma
+            # cerrada universal de la BER (depende del umbral, ganancia, AGC y
+            # la distribucion del ruido tras la envolvente). La fórmula de
+            # BFSK no aplicica aqui; se debe usar la curva de Monte Carlo.
+            raise NotImplementedError(
+                "BER teorica de ASK/OOK no coherente no tiene forma cerrada; "
+                "usar la curva de Monte Carlo del detector."
+            )
+        # OOK coherente con bits equiprobables: Eb = A^2*Tb/4 (energia promedio).
+        # Pb = Q(sqrt(2*Eb/N0)).
         return qfunc(np.sqrt(2.0 * g))
     if scheme == "BPSK":
         return qfunc(np.sqrt(2.0 * g))

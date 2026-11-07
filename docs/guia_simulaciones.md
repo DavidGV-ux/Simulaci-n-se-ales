@@ -87,7 +87,7 @@ Secuencia binaria `b_k ∈ {0,1}`. En **OOK** (caso particular de ASK): bit `1` 
   - *Coherente*: correlaciona con portadora de referencia y compara con umbral (derivado de energía/ganancia). Óptimo en AWGN ideal con sincronía.
   - *Envolvente*: usa la envolvente; más simple, pero generalmente peor en ruido y sensible a umbral/AGC.
 - **Timing offset / AGC error**: modelan errores prácticos de muestreo y de umbral/ganancia.
-- **Eb/N0 nominal**: fija el nivel de ruido relativo a la energía por bit. Curvas típicas: OOK coherente (bits equiprobables) ~ `Q(√(2·Eb/N0))` donde `Eb = A²·Tb/4` es la energía promedio por bit; envolvente/no coherente tiene peor desempeño (aprox. exponencial en condiciones ideales).
+- **Eb/N0 nominal**: fija el nivel de ruido relativo a la energía por bit. Curvas típicas: OOK coherente (bits equiprobables) ~ `Q(√(2·Eb/N0))` donde `Eb = A²·Tb/4` es la energía promedio por bit. Para ASK/OOK con detector de **envolvente/no coherente** no existe una BER teórica cerrada universal (depende del umbral, la ganancia/AGC y la distribución del ruido tras la envolvente); se recomienda la curva de Monte Carlo del detector.
 
 ### Interpretación de cada gráfica (ASK)
 1. **Secuencia y forma de onda**: TX y RX (normalizada por ganancia) en una ventana de bits; puntos/marcadores indican bits detectados. Permite ver cuándo un bit se confunde por ruido, atenuación o distorsión.
