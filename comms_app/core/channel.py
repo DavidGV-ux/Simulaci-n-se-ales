@@ -82,6 +82,25 @@ def _frequency_shift(x: np.ndarray, fs: float, df_hz: float) -> np.ndarray:
     return np.real(z * np.exp(1j * 2.0 * np.pi * df_hz * t))
 
 
+def _apply_linear_impairments(x: np.ndarray, cfg: ChannelConfig, fs: float) -> np.ndarray:
+    """Aplica los impairments lineales (multitrayecto y escalon de ganancia).
+
+    El eco es la senal directa mas una copia retardada con fase; el escalon
+    de ganancia modela AGC/desvanecimiento/conmutacion abrupta.
+    """
+    y = x.copy()
+    if cfg.multipath and cfg.mp_delay_us > 0:
+        delay = int(round(cfg.mp_delay_us * 1e-6 * fs))
+        if 0 < delay < x.size:
+            echo = np.concatenate([np.zeros(delay), x[:-delay]])
+            echo = _phase_shift_real(echo, np.deg2rad(cfg.mp_phase_deg))
+            y = y + (10.0 ** (cfg.mp_gain_db / 20.0)) * echo
+    if abs(cfg.gain_step_db) > 1e-9:
+        idx = int(np.clip(cfg.gain_step_at, 0.0, 1.0) * x.size)
+        y[idx:] *= 10.0 ** (cfg.gain_step_db / 20.0)
+    return y
+
+
 def apply_channel(
     x: np.ndarray,
     fs: float,
@@ -113,22 +132,7 @@ def apply_channel(
     path_loss = fsl_db(cfg.distance_km, cfg.frequency_mhz)
     total_atten = float(path_loss + max(0.0, cfg.extra_atten_db))
     gain = float(10.0 ** (-total_atten / 20.0))
-    y = gain * x
-
-    # Multitrayecto de dos rayos: directo + eco con retardo y fase.
-    if cfg.multipath and cfg.mp_delay_us > 0:
-        delay = int(round(cfg.mp_delay_us * 1e-6 * fs))
-        if 0 < delay < x.size:
-            echo = np.concatenate([np.zeros(delay), x[:-delay]])
-            echo = _phase_shift_real(echo, np.deg2rad(cfg.mp_phase_deg))
-            y = y + gain * (10.0 ** (cfg.mp_gain_db / 20.0)) * echo
-
-    # Cambio repentino de ganancia (AGC, desvanecimiento lento, etc.).
-    if abs(cfg.gain_step_db) > 1e-9:
-        idx = int(np.clip(cfg.gain_step_at, 0.0, 1.0) * x.size)
-        step = 10.0 ** (cfg.gain_step_db / 20.0)
-        y = y.copy()
-        y[idx:] *= step
+    y = gain * _apply_linear_impairments(x, cfg, fs)
 
     if abs(cfg.freq_offset_hz) > 1e-9:
         y = _frequency_shift(y, fs, cfg.freq_offset_hz)
@@ -176,17 +180,7 @@ def apply_channel(
     ebn0_eff = float("inf")
     if n0 > 0 and cfg.eb is not None:
         # Escala media de energía del canal lineal (sin interferencia).
-        linear = gain * x
-        if cfg.multipath and cfg.mp_delay_us > 0:
-            delay = int(round(cfg.mp_delay_us * 1e-6 * fs))
-            if 0 < delay < x.size:
-                echo = np.concatenate([np.zeros(delay), x[:-delay]])
-                echo = _phase_shift_real(echo, np.deg2rad(cfg.mp_phase_deg))
-                linear = linear + gain * (10.0 ** (cfg.mp_gain_db / 20.0)) * echo
-        if abs(cfg.gain_step_db) > 1e-9:
-            idx = int(np.clip(cfg.gain_step_at, 0.0, 1.0) * x.size)
-            linear = linear.copy()
-            linear[idx:] *= 10.0 ** (cfg.gain_step_db / 20.0)
+        linear = gain * _apply_linear_impairments(x, cfg, fs)
         scale = float(np.mean(linear**2) / max(np.mean(x**2), 1e-30))
         eb_rx = float(cfg.eb * scale)
         ebn0_eff = float(10.0 * np.log10(max(eb_rx, 1e-30) / max(n0, 1e-30)))

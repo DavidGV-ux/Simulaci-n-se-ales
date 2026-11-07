@@ -102,10 +102,14 @@ def bit_windows(x: np.ndarray, nbits: int, sps: int, offset_frac: float = 0.0) -
     x = np.asarray(x, dtype=float)
     sps = int(sps)
     offset = int(round(float(offset_frac) * sps))
+    total = int(nbits) * sps
+    if offset == 0 and x.size >= total:
+        # Caso comun (sin desplazamiento): ventana directa por cada bit.
+        core = x[:total]
+        return np.lib.stride_tricks.sliding_window_view(core, sps)[::sps]
     pad = sps + abs(offset) + 2
     xp = np.pad(x, (pad, pad), mode="edge")
     start = pad + offset
-    total = int(nbits) * sps
     if start < 0:
         xp = np.pad(xp, (-start, 0), mode="edge")
         start = 0
@@ -191,7 +195,8 @@ def snap_carrier(fc: float, rb: float, fs: float, min_cycles: int = 1) -> tuple[
     la correlación coherente depende de la fase inicial del bit y aparecen
     errores sistemáticos aunque el ruido sea bajo. Ajustar ``fc`` a un múltiplo
     entero de ``rb`` elimina ese problema y es una práctica habitual en los
-    transmisores reales.
+    transmisores reales. Si el ``fc`` solicitado queda por debajo de ``rb``
+    (menos de un ciclo por bit), se fuerza el múltiplo entero mínimo.
     """
     rb = float(rb)
     fs = float(fs)

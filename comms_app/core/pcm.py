@@ -18,6 +18,7 @@ from .signals import (
     pcm_encode,
     quantize_uniform,
     sample_signal,
+    signal_bandwidth,
     sinc_interp,
     spectrum,
     time_vector,
@@ -111,6 +112,8 @@ def simulate_pcm(cfg: PCMConfig) -> PCMResult:
     # Señal analógica en alta resolución para poder visualizar el muestreo.
     fs_analog = float(max(40.0 * cfg.fm, 12.0 * cfg.fs_sample, 50000.0))
     fs_analog = min(fs_analog, 4.0e6)
+    if fs_analog < 2.0 * cfg.fs_sample:
+        raise ValueError("fs_analog limitado por el tope de 4 MHz no alcanza para representar fs_sample; reduce fs_sample o aumenta el limite.")
     t_analog = time_vector(fs_analog, cfg.duration)
     x_analog = cfg.amplitude * generate_waveform(
         cfg.waveform,
@@ -219,7 +222,7 @@ def simulate_pcm(cfg: PCMConfig) -> PCMResult:
     err_q = xq - x_s
     sqnr_q = float(10.0 * np.log10(max(np.mean(x_s**2), 1e-30) / max(np.mean(err_q**2), 1e-30)))
     # Para una senoide de amplitud A y cuantificación uniforme de n bits.
-    sqnr_theory = float(6.02 * n_bits + 1.76 + 20.0 * np.log10(max(cfg.amplitude, 1e-9)))
+    sqnr_theory = float(6.02 * n_bits + 1.76 + 20.0 * np.log10(max(cfg.amplitude / cfg.full_scale, 1e-9)))
 
     f_a, s_a = spectrum(x_analog_f, fs_analog)
     f_s, s_s = spectrum(x_s, cfg.fs_sample)
@@ -228,7 +231,8 @@ def simulate_pcm(cfg: PCMConfig) -> PCMResult:
     # Aliasing ocurre si la señal tiene contenido por encima de Nyquist y no
     # se aplica filtro antialias. Con antialias activo el corte (0.45·fs)
     # atenúa esas componentes, por lo que no hay colapso espectral.
-    alias = bool(cfg.fm > nyquist * 1.02 and not cfg.antialias)
+    bw_occ = float(signal_bandwidth(x_analog_f, fs_analog, threshold_db=-40.0))
+    alias = bool(bw_occ > 0.5 * cfg.fs_sample and not cfg.antialias)
     bandwidth_hz = (2.0 * (0.5 * rb + rb)) if scheme == "FSK" else (2.0 * rb)
     metrics = {
         "fs_sample": float(cfg.fs_sample),

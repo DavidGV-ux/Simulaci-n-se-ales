@@ -41,11 +41,12 @@ def am_fidelity_curve(
     snr_values = np.asarray(snr_values, dtype=float)
     mse_env = np.empty_like(snr_values)
     mse_coh = np.empty_like(snr_values)
+    bw = am_noise_bandwidth_hz(cfg)
     for i, snr in enumerate(snr_values):
         c = copy.deepcopy(cfg)
         ch = _clean_channel(cfg.channel.seed)
         ch.snr_db = float(snr)
-        ch.noise_bandwidth_hz = am_noise_bandwidth_hz(cfg)
+        ch.noise_bandwidth_hz = bw
         c.channel = ch
         r = simulate_am(c)
         mse_env[i] = r.metrics["mse_env"]
@@ -75,7 +76,7 @@ def digital_ber_curve(
         raise ValueError(f"Esquema desconocido: {scheme}")
     measured = np.empty_like(ebn0_values)
     # Para la UI: suficiente resolución sin bloquear demasiado.
-    curve_nbits = int(max(nbits_min, min(12000, int(getattr(cfg, "nbits", nbits_min)))))
+    curve_nbits = int(max(nbits_min, int(getattr(cfg, "nbits", nbits_min))))
     for i, ebn0 in enumerate(ebn0_values):
         c = copy.deepcopy(cfg)
         c.nbits = curve_nbits
@@ -117,7 +118,7 @@ def pcm_sqnr_bits_curve(
         r = simulate_pcm(c)
         sqnr_rec[i] = r.sqnr_db
         sqnr_q[i] = r.sqnr_quant_db
-    theory = 6.02 * bits_values + 1.76 + 20.0 * np.log10(max(cfg.amplitude, 1e-9))
+    theory = 6.02 * bits_values + 1.76 + 20.0 * np.log10(max(cfg.amplitude / cfg.full_scale, 1e-9))
     return {
         "n_bits": bits_values,
         "sqnr_rec_db": sqnr_rec,
