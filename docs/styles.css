@@ -17,6 +17,7 @@ nav{display:flex;flex-wrap:wrap;gap:6px}
 nav a{color:var(--muted);padding:7px 11px;border-radius:9px;font-size:14px;font-weight:600}
 nav a:hover,nav a.active{background:#f1f5f9;color:var(--ink);text-decoration:none}
 .hero{padding:54px 0 28px}
+.hero.compact{padding:30px 0 10px}
 .hero-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:22px;align-items:stretch}
 h1{font-size:clamp(30px,4vw,46px);line-height:1.08;margin:0 0 12px;letter-spacing:-.02em}
 .lead{font-size:17px;color:var(--muted);margin:0 0 18px;max-width:62ch}
@@ -95,6 +96,9 @@ kbd{font-family:var(--mono);font-size:11px;background:#f1f5f9;border:1px solid v
 .status-bar{font-size:12px;color:var(--muted);background:#f8fafc;border:1px solid var(--border2);padding:8px 10px;border-radius:10px;margin-bottom:10px}
 .status-bar.busy{color:#0f766e;background:var(--accentBg);border-color:#cdeeed}
 .status-bar.err{color:#991b1b;background:#fef2f2;border-color:#fecaca}
+.context-box{font-size:13px;color:#35506b;background:#f0fdfa;border:1px solid #d4efec;padding:12px 14px;border-radius:10px;margin-bottom:10px;line-height:1.5}
+.context-box b{color:var(--accent2)}
+.context-box .ctx-title{font-weight:800;color:var(--accent2);margin-bottom:2px}
 .check-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:7px 0;font-size:12px;color:var(--muted)}
 .check-row input{width:auto}
 .subgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}

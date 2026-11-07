@@ -12,29 +12,30 @@ async function fetchText(url) {
 function post(type, payload) { self.postMessage(Object.assign({ type }, payload || {})); }
 
 async function init(baseUrl) {
-  post('status', { msg: 'Cargando Pyodide…', pct: 5 });
+  post('status', { msg: 'Preparando entorno de simulación…', pct: 5 });
   const pyodide = await loadPyodide({
     indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.27.7/full/'
   });
-  post('status', { msg: 'Cargando NumPy y SciPy… (puede tardar la primera vez)', pct: 20 });
+  post('status', { msg: 'Cargando componentes de cálculo… (primera vez puede tardar)', pct: 20 });
   await pyodide.loadPackage(['numpy', 'scipy']);
-  post('status', { msg: 'Cargando núcleo comms_app.core…', pct: 75 });
+  post('status', { msg: 'Cargando módulos del simulador…', pct: 75 });
   const fs = pyodide.FS;
   const mk = (p) => { try { fs.mkdir(p); } catch (_) {} };
   mk('/sim'); mk('/sim/comms_app'); mk('/sim/comms_app/core');
-  fs.writeFile('/sim/comms_app/__init__.py', await fetchText(baseUrl + 'py/comms_app/__init__.py'));
+  const b = baseUrl.replace(/\/?$/, '/');
+  fs.writeFile('/sim/comms_app/__init__.py', await fetchText(b + 'py/comms_app/__init__.py'));
   for (const f of CORE_FILES) {
-    fs.writeFile('/sim/comms_app/core/' + f, await fetchText(baseUrl + 'py/comms_app/core/' + f));
+    fs.writeFile('/sim/comms_app/core/' + f, await fetchText(b + 'py/comms_app/core/' + f));
   }
-  fs.writeFile('/sim/bridge.py', await fetchText(baseUrl + 'py/bridge.py'));
-  post('status', { msg: 'Inicializando módulos Python…', pct: 92 });
+  fs.writeFile('/sim/bridge.py', await fetchText(b + 'py/bridge.py'));
+  post('status', { msg: 'Iniciando simulador…', pct: 92 });
   await pyodide.runPythonAsync(`
 import sys
 if '/sim' not in sys.path:
     sys.path.insert(0, '/sim')
 import bridge
 `);
-  post('ready', { msg: 'Motor listo.', pct: 100 });
+  post('ready', { msg: 'Simulador listo.', pct: 100 });
   self._pyodide = pyodide;
 }
 

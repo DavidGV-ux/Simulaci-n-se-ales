@@ -12,10 +12,27 @@ const state = {
 };
 
 const INFO = {
-  am: { title: 'AM — Modulación de amplitud', desc: 'Portadora modulada en amplitud. Compara detector de envolvente y coherente; incluye canal, espectro, error, fidelidad y potencia.' },
-  ask: { title: 'ASK / OOK — Amplitud conmutada', desc: 'Bits como presencia/ausencia de portadora. Incluye forma de onda, espectro, diagrama de ojo y BER teórica/Monte Carlo.' },
-  fsk: { title: 'FSK — Frecuencia conmutada', desc: 'Bits como tonos f0/f1 (índice h). Incluye frecuencia estimada por bit, espectro y BER teórica/Monte Carlo.' },
-  pcm: { title: 'PCM — Pulsos codificados', desc: 'Muestreo, cuantificación, codificación, enlace digital y reconstrucción. Incluye error ±q/2, aliasing, SQNR vs bits y umbral.' },
+  am: { title: 'AM — Modulación de amplitud', desc: 'Modulación analógica: la amplitud de la portadora varía según la señal moduladora.' },
+  ask: { title: 'ASK / OOK — Amplitud conmutada', desc: 'Modulación digital: un bit enciende la portadora (1) o la apaga (0, OOK).' },
+  fsk: { title: 'FSK — Frecuencia conmutada', desc: 'Modulación digital: cada bit selecciona una frecuencia (f0 o f1).' },
+  pcm: { title: 'PCM — Modulación por pulsos codificados', desc: 'Digitalización: muestreo, cuantificación, codificación, transmisión y reconstrucción.' },
+};
+
+const CONTEXT = {
+  am: `<div class="ctx-title">Contexto — AM</div>Se transmite <b>Vp·[1 + m·m(t)]·sin(2π·fc·t)</b>. <b>fm</b> es la frecuencia del mensaje, <b>fc</b> la portadora, <b>m</b> el índice de modulación (m≤1 evita sobremodulación) y <b>fs</b> el muestreo de simulación. El canal agrega atenuación/ruido/factores externos; se comparan detectores de envolvente y coherente.`,
+  ask: `<div class="ctx-title">Contexto — ASK/OOK</div>La secuencia de bits controla la amplitud de la portadora: bit 1 transmite, bit 0 silencio (OOK). Parámetros clave: <b>Rb</b> (tasa), <b>fc</b> (portadora), <b>muestras/bit</b> y detector. Se observa forma de onda, espectro, diagrama de ojo y BER frente a Eb/N0.`,
+  fsk: `<div class="ctx-title">Contexto — FSK</div>Cada bit elige un tono: <b>f0</b> (0) o <b>f1</b> (1), con desviación <b>Δf = h·Rb/2</b> e índice <b>h</b>. Se observa la frecuencia estimada por bit, el espectro en f0/f1 y la BER. El detector puede ser coherente o no coherente (I/Q).`,
+  pcm: `<div class="ctx-title">Contexto — PCM</div>La señal analógica se filtra/muestrea a <b>fs</b> (Nyquist: fs &gt; 2·fm), se cuantifica con <b>n bits</b> (SQNR ideal ≈ 6.02·n+1.76 dB) y se transmite como bits (<b>Rb = fs·n</b>) por ASK/FSK/BPSK. Se reconstruye y se observa aliasing, error de cuantificación y el umbral del enlace.`,
+};
+
+const WAVE_CONTEXT = {
+  sine: '<b>Senoidal:</b> una sola frecuencia; útil para ver portadora/bandas laterales o cuantificación limpia.',
+  square: '<b>Cuadrada:</b> armónicos impares; exige más ancho de banda y muestra distorsión/aliasing.',
+  triangle: '<b>Triangular:</b> armónicos impares con caída rápida; transición suave.',
+  sawtooth: '<b>Diente de sierra:</b> armónicos pares e impares; rica en espectro.',
+  chirp: '<b>Chirp:</b> frecuencia variable en el tiempo (barrido); prueba respuesta en banda.',
+  two_tone: '<b>Dos tonos:</b> dos componentes; útil para intermodulación y ancho de banda.',
+  formula: '<b>Fórmula:</b> señal personalizada en función de <code>t</code> (segundos), evaluada de forma segura.',
 };
 
 function fmt(v, d = 3) {
@@ -239,6 +256,19 @@ function applyPreset(name) {
   updateLinkLabel();
 }
 
+function updateContext() {
+  const box = $('#contextBox'); if (!box) return;
+  let html = CONTEXT[state.module] || '';
+  const wf = v('waveform');
+  if (wf && WAVE_CONTEXT[wf]) html += `<div style="margin-top:8px">${WAVE_CONTEXT[wf]}</div>`;
+  const bm = v('bit_mode');
+  if (bm) {
+    const map = { random: 'Secuencia aleatoria (reproducible con semilla).', manual: 'Secuencia ingresada manualmente (0/1).', alternating: 'Patrón alternado 0101…', prbs7: 'PRBS-7: secuencia pseudoaleatoria de prueba.' };
+    if (map[bm]) html += `<div style="margin-top:8px"><b>Fuente de bits:</b> ${map[bm]}</div>`;
+  }
+  box.innerHTML = html || '';
+}
+
 function bindChannel() {
   const p = el('ch_preset'); if (p) p.addEventListener('change', () => applyPreset(p.value));
   const adj = el('ch_adj'); if (adj) adj.addEventListener('click', () => {
@@ -249,6 +279,8 @@ function bindChannel() {
   ['ch_dist','ch_freq','ch_att','ch_nom','ch_tgt','ch_mp','ch_int','ch_clip','fs_sample','n_bits','sps','fc'].forEach(id => {
     const e = el(id); if (e) e.addEventListener(e.type === 'checkbox' ? 'change' : 'input', updateLinkLabel);
   });
+  const wf = el('waveform'); if (wf) wf.addEventListener('change', updateContext);
+  const bm = el('bit_mode'); if (bm) bm.addEventListener('change', updateContext);
   // default interference freq
   const intf = el('ch_intf'); if (intf && (Number(intf.value) === 0 || !intf.value)) {
     if (state.module === 'am') intf.value = Number(v('fc') || 20000) + 4000;
@@ -256,6 +288,7 @@ function bindChannel() {
     else intf.value = Number(v('fc') || 6000) + 2000;
   }
   updateLinkLabel();
+  updateContext();
 }
 
 function collectParams() {
@@ -552,7 +585,7 @@ function render(module, r) {
   else if (module === 'ask') renderASK(r);
   else if (module === 'fsk') renderFSK(r);
   else if (module === 'pcm') renderPCM(r);
-  setStatus('Simulación completada (motor Python/NumPy/SciPy).', '');
+  setStatus('Simulación completada. Revisa las gráficas y sus interpretaciones.', '');
 }
 
 // ---------- Module/UI wiring ----------
@@ -562,9 +595,10 @@ function renderModule(name) {
   $('#simTitle').textContent = info.title; $('#simDesc').textContent = info.desc; $('#moduleSelect').value = name;
   $('#controls').innerHTML = SCHEMAS[name]();
   bindChannel();
-  $('#globalInterp').innerHTML = 'Pulsa <b>Simular</b> para ejecutar el motor Python y generar todas las gráficas.';
+  updateContext();
+  $('#globalInterp').innerHTML = 'Ingresa los datos y pulsa <b>Simular</b> para generar las gráficas.';
   destroyCharts(); $('#charts').innerHTML = ''; $('#metrics').innerHTML = '';
-  if (state.ready) setStatus('Listo. Ajusta parámetros y pulsa Simular.');
+  if (state.ready) setStatus('Listo. Ajusta los parámetros y pulsa Simular.');
 }
 
 function setEnabled(on) {
@@ -572,10 +606,10 @@ function setEnabled(on) {
 }
 
 function requestRun() {
-  if (!state.ready || !state.worker) { setStatus('El motor aún no está listo.', 'busy'); return; }
+  if (!state.ready || !state.worker) { setStatus('El simulador aún no está listo.', 'busy'); return; }
   const id = ++state.reqId;
   const params = collectParams();
-  setStatus('Calculando simulación y curvas (Monte Carlo) con el motor Python…', 'busy');
+  setStatus('Calculando simulación y gráficas…', 'busy');
   $('#runBtn').disabled = true;
   state.worker.postMessage({ type: 'run', id, module: state.module, params });
 }

@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Simulador de Señales · AM, ASK, FSK y PCM</title>
-  <meta name="description" content="Simulador de comunicaciones AM, ASK, FSK y PCM ejecutado en el navegador con el motor Python (NumPy/SciPy vía Pyodide)." />
+  <meta name="description" content="Simulador interactivo de AM, ASK, FSK y PCM con gráficas e interpretación." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -14,44 +14,31 @@
 <body>
   <header class="top">
     <div class="wrap">
-      <div class="brand"><div class="logo">∿</div><div>Señales <span style="color:var(--faint);font-weight:600">· Laboratorio</span></div></div>
+      <div class="brand"><div class="logo">∿</div><div>Simulador de Señales</div></div>
       <nav>
-        <a href="#inicio">Inicio</a><a href="#simulador">Simulador</a><a href="#guias">Guías</a><a href="#galeria">Galería</a>
+        <a href="#simulador">Simulador</a>
+        <a href="#guias">Guías</a>
         <a href="https://github.com/DavidGV-ux/Simulaci-n-se-ales" target="_blank" rel="noopener">GitHub</a>
       </nav>
     </div>
   </header>
 
-  <main id="inicio" class="wrap">
-    <section class="hero">
-      <div class="hero-grid">
-        <div>
-          <h1>Simulador de comunicaciones<br><span style="color:var(--accent)">AM, ASK, FSK y PCM</span></h1>
-          <p class="lead">Ejecución online del motor de simulación Python (NumPy/SciPy vía Pyodide) con interfaz HTML/CSS/JS. Mismas gráficas y lógica que la aplicación de escritorio: canal, ruido, factores externos, métricas e interpretación al pasar el ratón.</p>
-          <div class="pills">
-            <span class="pill">AM</span><span class="pill">ASK / OOK</span><span class="pill">FSK</span><span class="pill">PCM</span><span class="pill">FSL + AWGN</span><span class="pill">Multitrayecto</span><span class="pill">Interferencia</span><span class="pill">CFO / fase / clip</span><span class="pill">Curvas BER/SQNR</span>
-          </div>
-          <div class="actions">
-            <a class="btn primary" href="#simulador">Abrir simulador</a>
-          </div>
-        </div>
-        <div class="hero-side">
-          <div class="card mini"><h3>Motor real (Pyodide)</h3><p>Las simulaciones usan el mismo <code>comms_app.core</code> de Python: modelos, canal, detectores y curvas de análisis.</p></div>
-          <div class="card mini"><h3>Gráficas completas</h3><p>AM (6), ASK (4, ojo+BER), FSK (4, frecuencia/bit+BER), PCM (6, SQNR vs bits/umbral) con interpretación al pasar el ratón.</p></div>
-          <div class="card mini"><h3>Primera carga</h3><p>Descarga Pyodide + NumPy + SciPy (puede tardar). Las simulaciones siguientes se ejecutan en el navegador.</p></div>
-        </div>
+  <main class="wrap">
+    <section class="hero compact">
+      <h1>Simulador <span style="color:var(--accent)">AM, ASK, FSK y PCM</span></h1>
+      <p class="lead">Selecciona el tipo de señal, revisa su contexto, ingresa los datos y genera las gráficas con su interpretación.</p>
+      <div class="pills">
+        <span class="pill">AM</span><span class="pill">ASK / OOK</span><span class="pill">FSK</span><span class="pill">PCM</span><span class="pill">Canal y ruido</span>
       </div>
     </section>
 
     <section id="simulador">
-      <div class="section-title"><h2>Simulador</h2><p>Selecciona módulo, ajusta parámetros y pulsa <b>Simular</b>.</p></div>
-
       <div id="bootCard" class="card pad" style="margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <div class="spinner" id="bootSpin" aria-hidden="true"></div>
           <div style="flex:1">
-            <div style="font-weight:700" id="bootTitle">Cargando motor de simulación…</div>
-            <div style="color:var(--muted);font-size:13px" id="bootMsg">Inicializando Pyodide, NumPy, SciPy y el núcleo <code>comms_app.core</code>.</div>
+            <div style="font-weight:700" id="bootTitle">Preparando simulador…</div>
+            <div style="color:var(--muted);font-size:13px" id="bootMsg">Cargando el motor de simulación. Puede tardar un momento la primera vez.</div>
           </div>
           <button class="btn" id="bootRetry" style="display:none">Reintentar</button>
         </div>
@@ -60,9 +47,9 @@
 
       <div class="card sim">
         <div class="sim-head">
-          <div><h3 id="simTitle">AM — Modulación de amplitud</h3><p id="simDesc">Cargando…</p></div>
+          <div><h3 id="simTitle">Simulador</h3><p id="simDesc">Selecciona un tipo de señal.</p></div>
           <div class="row">
-            <select id="moduleSelect" aria-label="Módulo" disabled>
+            <select id="moduleSelect" aria-label="Tipo de señal" disabled>
               <option value="am">AM</option><option value="ask">ASK / OOK</option><option value="fsk">FSK</option><option value="pcm">PCM</option>
             </select>
             <button class="btn primary" id="runBtn" disabled>Simular</button>
@@ -72,7 +59,8 @@
         <div class="sim-body">
           <aside class="controls" id="controls"></aside>
           <div class="results">
-            <div id="statusBar" class="status-bar">Esperando motor…</div>
+            <div id="contextBox" class="context-box"></div>
+            <div id="statusBar" class="status-bar">Esperando el simulador…</div>
             <div class="metrics" id="metrics"></div>
             <div id="charts"></div>
             <div class="interp" id="globalInterp"></div>
@@ -82,36 +70,19 @@
     </section>
 
     <section id="guias">
-      <div class="section-title"><h2>Guías e interpretación</h2><p>Cómo funciona cada simulación, parámetros y lectura de gráficas.</p></div>
+      <div class="section-title"><h2>Guía rápida</h2></div>
       <details open><summary>Canal y factores externos</summary><div class="details-body">
         <ul>
-          <li><b>FSL</b>: <code>32.45 + 20·log10(d_km) + 20·log10(f_MHz)</code>. Más distancia/frecuencia ⇒ más pérdida.</li>
-          <li><b>Atenuación extra</b>: cables, obstáculos, lluvia, desapuntamiento (se suma a FSL).</li>
-          <li><b>Nominal TX vs efectivo RX</b>: SNR/EbN0 nominales son referencia en TX; el canal atenúa la señal pero no el ruido ⇒ la calidad efectiva cae con la pérdida.</li>
-          <li><b>AWGN</b>: ruido blanco gaussiano. <b>Multitrayecto</b>: eco (ISI/cancelación). <b>Interferencia</b>: tono. <b>CFO/fase</b>: deriva de oscilador. <b>Clip</b>: no linealidad.</li>
+          <li><b>Pérdida (FSL):</b> aumenta con distancia y frecuencia.</li>
+          <li><b>Atenuación extra:</b> cables, obstáculos, lluvia, etc.</li>
+          <li><b>SNR/EbN0 nominal vs efectivo:</b> el nominal es referencia de transmisión; al atenuarse la señal, la calidad efectiva en recepción disminuye.</li>
+          <li><b>Ruido (AWGN):</b> errores/distorsión. <b>Multitrayecto:</b> eco. <b>Interferencia:</b> tono. <b>CFO/fase:</b> deriva de oscilador. <b>Clip:</b> saturación.</li>
         </ul>
       </div></details>
-      <details><summary>AM (6 gráficas)</summary><div class="details-body">Recuperación (original/envolvente/coherente), RF TX/RX, espectro TX/RX (fc, fc±fm), error, fidelidad MSE vs SNR (AWGN) con punto actual, y reparto de potencia (Pt/Pc). SNR nominal en banda 2·fm; m&gt;1 distorsiona envolvente.</div></details>
-      <details><summary>ASK / OOK (4 gráficas)</summary><div class="details-body">Forma de onda TX/RX + bits detectados, espectro (lóbulos sinc, ~2Rb), diagrama de ojo + umbral, BER teórica vs Monte Carlo + punto actual. Portadora ajustada a ciclos enteros/bit; soporta detector coherente/envolvente, timing y error AGC.</div></details>
-      <details><summary>FSK (4 gráficas)</summary><div class="details-body">Forma de onda, frecuencia estimada por bit (f0/f1, Δf=h·Rb/2), espectro, BER teórica vs Monte Carlo. Detector coherente o no coherente (I/Q).</div></details>
-      <details><summary>PCM (6 gráficas)</summary><div class="details-body">Muestreo/cuantificación, error ±q/2, reconstrucción (original/ZOH/sinc), espectro/aliasing (Nyquist fs/2), SQNR vs bits, y umbral SQNR vs Eb/N0. Rb=fs·n; a Eb/N0 bajo dominan errores de bit sobre cuantificación.</div></details>
-      <div class="note">Referencia completa: <a href="https://github.com/DavidGV-ux/Simulaci-n-se-ales#gu%C3%ADa-minuciosa-c%C3%B3mo-funciona-cada-simulaci%C3%B3n-valores-canal-y-gr%C3%A1ficas" target="_blank" rel="noopener">README del repositorio</a>.</div>
-    </section>
-
-    <section id="galeria">
-      <div class="section-title"><h2>Galería (app Python)</h2><p>Capturas de referencia de la aplicación de escritorio.</p></div>
-      <div class="gallery">
-        <figure><img loading="lazy" src="assets/validation/page_0.png" alt="AM"/><figcaption>AM</figcaption></figure>
-        <figure><img loading="lazy" src="assets/validation/page_1.png" alt="ASK"/><figcaption>ASK / OOK</figcaption></figure>
-        <figure><img loading="lazy" src="assets/validation/page_2.png" alt="FSK"/><figcaption>FSK</figcaption></figure>
-        <figure><img loading="lazy" src="assets/validation/page_3.png" alt="PCM"/><figcaption>PCM</figcaption></figure>
-        <figure><img loading="lazy" src="assets/validation/am_overmodulation_interference.png" alt="AM escenario"/><figcaption>AM: sobremodulación + interferencia</figcaption></figure>
-        <figure><img loading="lazy" src="assets/validation/pcm_alias_threshold.png" alt="PCM escenario"/><figcaption>PCM: aliasing + umbral</figcaption></figure>
-      </div>
     </section>
 
     <footer class="footer wrap">
-      <p>Simulador AM/ASK/FSK/PCM · Motor <code>comms_app.core</code> (Python/NumPy/SciPy) ejecutado con Pyodide + UI HTML/CSS/JS. <a href="https://github.com/DavidGV-ux/Simulaci-n-se-ales" target="_blank" rel="noopener">GitHub</a>.</p>
+      <p>Simulador AM, ASK, FSK y PCM · <a href="https://github.com/DavidGV-ux/Simulaci-n-se-ales" target="_blank" rel="noopener">Repositorio</a></p>
     </footer>
   </main>
 
