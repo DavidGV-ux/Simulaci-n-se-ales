@@ -225,7 +225,10 @@ def simulate_pcm(cfg: PCMConfig) -> PCMResult:
     f_s, s_s = spectrum(x_s, cfg.fs_sample)
     f_rf, s_rf = spectrum(tx, fs_rf)
     nyquist = 0.5 * cfg.fs_sample
-    alias = bool(cfg.fm > nyquist * 1.02)
+    # Aliasing ocurre si la señal tiene contenido por encima de Nyquist y no
+    # se aplica filtro antialias. Con antialias activo el corte (0.45·fs)
+    # atenúa esas componentes, por lo que no hay colapso espectral.
+    alias = bool(cfg.fm > nyquist * 1.02 and not cfg.antialias)
     bandwidth_hz = (2.0 * (0.5 * rb + rb)) if scheme == "FSK" else (2.0 * rb)
     metrics = {
         "fs_sample": float(cfg.fs_sample),

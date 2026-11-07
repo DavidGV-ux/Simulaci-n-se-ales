@@ -202,6 +202,13 @@ def _base_time(nbits: int, sps: int, rb: float) -> tuple[np.ndarray, float, floa
 
 
 def simulate_ask(cfg: ASKConfig) -> DigitalResult:
+    """Simula ASK binaria. Con amplitudes (A, 0) equivale a OOK.
+
+    OOK es un caso particular de ASK donde el bit 0 transmite ausencia de
+    portadora (amplitud 0) y el bit 1 transmite una ráfaga de portadora de
+    amplitud A. La energía promedio por bit (bits equiprobables) es
+    Eb = A^2 * Tb / 4.
+    """
     bits = make_bits(cfg.nbits, cfg.bit_mode, cfg.manual_bits, cfg.seed)
     nbits = int(bits.size)
     sps = int(cfg.sps)

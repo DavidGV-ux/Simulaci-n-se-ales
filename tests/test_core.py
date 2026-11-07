@@ -13,13 +13,14 @@ from comms_app.core.digital import (
     FSKConfig,
     ber_theory,
     make_bits,
+    qfunc,
     simulate_ask,
     simulate_bpsk,
     simulate_fsk,
     snap_carrier,
 )
 from comms_app.core.pcm import PCMConfig, simulate_pcm
-from comms_app.core.signals import generate_waveform, quantize_uniform, safe_eval_signal, time_vector
+from comms_app.core.signals import generate_waveform, quantize_uniform, safe_eval_signal, spectrum, time_vector
 
 
 def awgn(distance_km=0.0, frequency_mhz=0.0, **kwargs):
@@ -195,3 +196,95 @@ def test_manual_formula_signal():
     y = generate_waveform("sine", t, frequency=100.0, normalize=False, remove_dc=False)
     assert np.allclose(x, np.sin(2 * np.pi * 100 * t))
     assert y.shape == t.shape
+
+
+def test_ask_spectrum_has_carrier_and_sidebands():
+    # ASK/OOK: pico de la portadora en fc (ajustado a entero de ciclos/bit) y
+    # lóbulos laterales: el espectro no debe ser una línea pura en fc.
+    r = simulate_ask(ASKConfig(nbits=256, bit_mode="random", sps=64, fc=6000.0, rb=1000.0, channel=awgn()))
+    f, mag = r.spectrum_f, r.spectrum_db
+    peak_i = int(np.argmax(mag))
+    assert abs(float(f[peak_i]) - float(r.extras["fc"])) < 5.0
+    assert abs(float(mag[peak_i])) < 1e-6  # pico normalizado a 0 dB relativo al maximo
+    above = np.where(mag > -20.0)[0]
+    assert above.size > 1
+    assert float(f[above[0]]) < float(r.extras["fc"]) < float(f[above[-1]])
+
+
+def test_ask_ook_zero_bit_has_no_carrier():
+    # ASK con amplitudes (A, 0) es OOK: el bit 0 no transmite portadora.
+    r = simulate_ask(ASKConfig(nbits=4, bit_mode="manual", manual_bits="1000", channel=awgn()))
+    assert r.bits.tolist() == [1, 0, 0, 0]
+    sps = int(r.sps)
+    assert np.allclose(r.tx[sps * 3 :], 0.0)  # los bits 1, 2 y 3 (0-based) son cero
+    assert np.allclose(r.tx[sps : sps * 3], 0.0)  # sin portadora fuera del primer bit
+    assert np.any(r.tx[:sps] != 0.0)  # el primer bit (1) transmite portadora
+
+
+def test_ook_coherent_ber_theory():
+    # OOK coherente con bits equiprobables: Eb = A^2*Tb/4 -> Pb = Q(sqrt(2*Eb/N0)).
+    ebn0_db = 10.0
+    expected = float(qfunc(np.sqrt(2.0 * 10.0 ** (ebn0_db / 10.0))))
+    assert float(ber_theory("ASK", ebn0_db, "coherent")) == pytest.approx(expected)
+    r = simulate_ask(ASKConfig(nbits=20000, detector="coherent", channel=awgn(ebn0_db=ebn0_db), seed=7))
+    assert r.ber <= max(0.25, 4.0 * expected + 0.01)
+
+
+def test_fsk_orthogonal_only_for_bfsk_rectangular():
+    # BFSK rectangular: la separacion minima para deteccion coherente es
+    # df = Rb (h = 1); h = 0.5 no es ortogonal ni equivale a MSK.
+    r_orth = simulate_fsk(FSKConfig(nbits=20000, modulation_index=1.0, detector="coherent", channel=awgn(ebn0_db=10.0), seed=7))
+    assert r_orth.extras["orthogonal"] is True
+    assert float(r_orth.extras["df"]) == pytest.approx(0.5 * 1.0 * 1000.0)
+    assert float(r_orth.extras["bandwidth_hz"]) == pytest.approx(2.0 * (500.0 + 1000.0))
+    r_h05 = simulate_fsk(FSKConfig(nbits=20000, modulation_index=0.5, detector="coherent", channel=awgn(ebn0_db=10.0), seed=7))
+    assert r_h05.extras["orthogonal"] is False
+    # BER coherente BFSK ortogonal: Q(sqrt(Eb/N0)).
+    theory_coh = float(ber_theory("FSK", 10.0, "coherent"))
+    assert r_orth.ber <= max(0.25, 4.0 * theory_coh + 0.01)
+    # BER no coherente BFSK ortogonal: 0.5*exp(-Eb/(2*N0)).
+    r_nc = simulate_fsk(FSKConfig(nbits=20000, modulation_index=1.0, detector="noncoherent", channel=awgn(ebn0_db=10.0), seed=7))
+    theory_nc = float(ber_theory("FSK", 10.0, "noncoherent"))
+    assert r_nc.ber <= max(0.25, 4.0 * theory_nc + 0.01)
+
+
+def test_fsk_carson_bandwidth_increases_with_modulation_index():
+    r_half = simulate_fsk(FSKConfig(nbits=32, modulation_index=0.5, channel=awgn()))
+    r_one = simulate_fsk(FSKConfig(nbits=32, modulation_index=1.5, channel=awgn()))
+    assert float(r_one.extras["h"]) == pytest.approx(1.5)
+    assert float(r_one.extras["bandwidth_hz"]) > float(r_half.extras["bandwidth_hz"])
+    assert float(r_one.extras["bandwidth_hz"]) == pytest.approx(2.0 * (0.5 * 1.5 * 1000.0 + 1000.0))
+
+
+def test_pcm_clipping_breaks_sqnr_theory():
+    # Con recorte (amplitud > full_scale) la formula de SQNR del cuantificador
+    # uniforme ya no aplica: el error de cuantificacion crece y la SQNR cae.
+    t = time_vector(8000.0, 0.02)
+    x = 1.5 * np.sin(2.0 * np.pi * 100.0 * t)
+    xq, idx, q, qerr = quantize_uniform(x, 4, 1.0)
+    assert float(np.max(np.abs(xq))) <= 1.0 + 1e-9
+    sqnr_clipped = float(10.0 * np.log10(float(np.mean(x**2)) / max(float(np.mean(qerr**2)), 1e-30)))
+    sqnr_theory = 6.02 * 4 + 1.76
+    assert sqnr_clipped < sqnr_theory - 3.0
+
+
+def test_pcm_antialias_prevents_aliasing():
+    kwargs = dict(fm=5000.0, fs_sample=8000.0, duration=0.02, ebn0_db=None, channel=awgn(), scheme="ASK")
+    r_off = simulate_pcm(PCMConfig(**kwargs, antialias=False))
+    r_on = simulate_pcm(PCMConfig(**kwargs, antialias=True))
+    assert r_off.metrics["alias"] is True
+    assert r_on.metrics["alias"] is False
+
+
+def test_interference_creates_spectral_peak():
+    # La interferencia de tono debe aparecer como pico espectral en su frecuencia.
+    r = simulate_bpsk(BPSKConfig(nbits=256, channel=ChannelConfig(distance_km=0.0, frequency_mhz=0.0, ebn0_db=20.0, interference=True, int_freq_hz=6050.0, int_amp_db=0.0)))
+    f, mag = spectrum(r.clean, r.fs)
+    peak_i = int(np.argmax(mag))
+    assert abs(float(f[peak_i]) - 6050.0) < 250.0
+
+
+def test_cfo_degrades_coherent_detection():
+    clean = simulate_bpsk(BPSKConfig(nbits=4000, channel=awgn(ebn0_db=12), seed=5))
+    cfo = simulate_bpsk(BPSKConfig(nbits=4000, channel=ChannelConfig(distance_km=0.0, frequency_mhz=0.0, ebn0_db=12.0, freq_offset_hz=200.0), seed=5))
+    assert cfo.ber > clean.ber
