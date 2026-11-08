@@ -45,6 +45,7 @@ class PCMConfig:
     scheme: str = "BPSK"
     fc: float = 20000.0
     sps: int = 16
+    detector: str = "noncoherent"  # coherent | noncoherent (solo esquema FSK)
     ebn0_db: float | None = 12.0
     seed: int = 1
     channel: ChannelConfig = field(default_factory=ChannelConfig)
@@ -200,11 +201,19 @@ def simulate_pcm(cfg: PCMConfig) -> PCMResult:
         df = 0.5 * rb
         f0, f1 = max(1.0, fc - df), fc + df
         tl = np.arange(sps, dtype=float) / fs_rf
-        c0, s0 = np.cos(2.0 * np.pi * f0 * tl), np.sin(2.0 * np.pi * f0 * tl)
-        c1, s1 = np.cos(2.0 * np.pi * f1 * tl), np.sin(2.0 * np.pi * f1 * tl)
-        e0 = (win @ c0) ** 2 + (win @ s0) ** 2
-        e1v = (win @ c1) ** 2 + (win @ s1) ** 2
-        detected = (e1v > e0).astype(np.uint8)
+        coherent = str(cfg.detector).lower().startswith("coh")
+        if coherent:
+            # Deteccion coherente: correlacion con las portadoras conocidas
+            # (fase inicial de las portadoras generadas en cero).
+            e0 = np.abs(np.sum(win * np.exp(-2j * np.pi * f0 * tl), axis=1)) ** 2
+            e1v = np.abs(np.sum(win * np.exp(-2j * np.pi * f1 * tl), axis=1)) ** 2
+            detected = (e1v > e0).astype(np.uint8)
+        else:
+            c0, s0 = np.cos(2.0 * np.pi * f0 * tl), np.sin(2.0 * np.pi * f0 * tl)
+            c1, s1 = np.cos(2.0 * np.pi * f1 * tl), np.sin(2.0 * np.pi * f1 * tl)
+            e0 = (win @ c0) ** 2 + (win @ s0) ** 2
+            e1v = (win @ c1) ** 2 + (win @ s1) ** 2
+            detected = (e1v > e0).astype(np.uint8)
 
     errors = int(np.sum(detected != bits_flat))
     ber = errors / max(bits_flat.size, 1)

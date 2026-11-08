@@ -356,6 +356,7 @@ def run_pcm(p: dict) -> dict:
             scheme=p.get("scheme", "BPSK"),
             fc=float(p.get("fc", 20000)),
             sps=int(p.get("sps", 16)),
+            detector=p.get("detector", "noncoherent"),
             ebn0_db=None,
             seed=int(p.get("seed", ch.seed)),
             channel=ch,

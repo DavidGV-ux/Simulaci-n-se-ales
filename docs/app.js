@@ -209,6 +209,7 @@ const SCHEMAS = {
     `),
     g('Enlace digital PCM', `
       ${f('scheme', 'Esquema', 'select', { value: 'BPSK', options: [{ value: 'BPSK', label: 'BPSK' }, { value: 'ASK', label: 'ASK / OOK' }, { value: 'FSK', label: 'FSK' }] })}
+      ${f('pcm_detector', 'Detector FSK', 'select', { value: 'noncoherent', options: [{ value: 'noncoherent', label: 'No coherente (I/Q)' }, { value: 'coherent', label: 'Coherente' }] })}
       ${f('fc', 'Portadora fc (Hz)', 'number', { value: 20000, step: 1000 })}
       ${f('sps', 'Muestras/bit', 'number', { value: 16, step: 4, min: 8, max: 64 })}
       <div class="note" id="pcm_info" style="margin:6px 0 0;padding:8px;font-size:11px">—</div>
@@ -320,7 +321,7 @@ function collectParams() {
     waveform: v('waveform'), fm: v('fm'), phase_deg: v('phase_deg'), duty: v('duty'), f_end: v('f_end'),
     formula: v('waveform') === 'formula' ? v('formula') : null,
     amplitude: v('amplitude'), fs_sample: v('fs_sample'), n_bits: v('n_bits'), duration_ms: v('duration_ms'),
-    full_scale: v('full_scale'), antialias: v('antialias'), scheme: v('scheme'), fc: v('fc'), sps: v('sps'),
+    full_scale: v('full_scale'), antialias: v('antialias'), scheme: v('scheme'), fc: v('fc'), sps: v('sps'), detector: v('pcm_detector'),
     seed: v('ch_seed'), channel: ch,
   };
   return { channel: ch };

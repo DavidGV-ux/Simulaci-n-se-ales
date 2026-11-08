@@ -111,6 +111,10 @@ class PCMPage(SimulationPage):
         self.scheme.addItem("ASK / OOK", "ASK")
         self.scheme.addItem("FSK", "FSK")
         self.scheme.currentIndexChanged.connect(self._sync_carrier)
+        self.detector = QComboBox()
+        self.detector.addItem("No coherente (I/Q)", "noncoherent")
+        self.detector.addItem("Coherente", "coherent")
+        self.detector.setCurrentIndex(0)
         self.fc = spin(1000.0, 1000000.0, 20000.0, decimals=0, step=1000.0, suffix="Hz")
         self.sps = integer_spin(8, 64, 16, step=4, suffix="muestras/bit")
         self.fc.valueChanged.connect(self._sync_carrier)
@@ -123,6 +127,7 @@ class PCMPage(SimulationPage):
         lf.addRow(field_label("Esquema"), self.scheme)
         lf.addRow(field_label("Portadora fc"), self.fc)
         lf.addRow(field_label("Muestras por bit"), self.sps)
+        lf.addRow(field_label("Detector FSK"), self.detector)
         lf.addRow(self.carrier_info)
         self.add_control(link)
 
@@ -163,6 +168,7 @@ class PCMPage(SimulationPage):
         self.full_scale.setValue(1.0)
         self.antialias.setChecked(True)
         self.scheme.setCurrentIndex(0)
+        self.detector.setCurrentIndex(0)
         self.fc.setValue(20000.0)
         self.sps.setValue(16)
         self.channel.preset.setCurrentText("AWGN ideal")
@@ -257,6 +263,7 @@ class PCMPage(SimulationPage):
             scheme=self.scheme.currentData(),
             fc=self.fc.value(),
             sps=self.sps.value(),
+            detector=self.detector.currentData(),
             ebn0_db=None,
             seed=self.channel.seed.value(),
             channel=self.channel.config(),

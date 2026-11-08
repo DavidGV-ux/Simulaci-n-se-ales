@@ -256,6 +256,24 @@ def test_fsk_carson_bandwidth_increases_with_modulation_index():
     assert float(r_one.extras["bandwidth_hz"]) == pytest.approx(2.0 * (0.5 * 1.5 * 1000.0 + 1000.0))
 
 
+def test_pcm_fsk_detector_option():
+    # FSK dentro de PCM admite detector coherente o no coherente.
+    cfg_coh = PCMConfig(
+        duration=0.02, fs_sample=8000.0, n_bits=8, ebn0_db=None, channel=awgn(),
+        scheme="FSK", fc=20000.0, sps=16, detector="coherent",
+    )
+    r_coh = simulate_pcm(cfg_coh)
+    assert r_coh.ber == 0.0  # senal limpia -> cero errores con cualquier detector
+    cfg_nc = PCMConfig(
+        duration=0.02, fs_sample=8000.0, n_bits=8, ebn0_db=None, channel=awgn(),
+        scheme="FSK", fc=20000.0, sps=16, detector="noncoherent",
+    )
+    r_nc = simulate_pcm(cfg_nc)
+    assert r_nc.ber == 0.0
+    # El default sigue siendo no coherente (comportamiento historico).
+    assert PCMConfig().detector == "noncoherent"
+
+
 def test_pcm_clipping_breaks_sqnr_theory():
     # Con recorte (amplitud > full_scale) la formula de SQNR del cuantificador
     # uniforme ya no aplica: el error de cuantificacion crece y la SQNR cae.
