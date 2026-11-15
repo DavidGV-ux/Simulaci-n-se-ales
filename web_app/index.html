@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Ondas</title>
+    <!-- Google Fonts: Inter & Fira Code -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    
+    <!-- Plotly.js: Carga local prioritaria (offline) con fallback a CDN -->
+    <script src="plotly.min.js"></script>
+    <script>
+        if (!window.Plotly) {
+            document.write('<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"><\/script>');
+        }
+    </script>
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+    <!-- ====================================================================
+         Sidebar Navigation (ÚNICAMENTE 4 Módulos)
+         ==================================================================== -->
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-icon">∿</div>
+            <div class="brand-text">
+                <h1>SIMULADOR ONDAS</h1>
+                <p>Simulación de Señales</p>
+            </div>
+        </div>
+
+        <p class="nav-section-title">Módulos</p>
+        <ul class="nav-list">
+            <li>
+                <button class="nav-btn active" data-module="am">
+                    Modulación AM
+                    <span class="nav-badge">Analógica</span>
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-module="ask">
+                    Modulación ASK
+                    <span class="nav-badge">OOK / Digital</span>
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-module="fsk">
+                    Modulación FSK
+                    <span class="nav-badge">2 Tonos</span>
+                </button>
+            </li>
+            <li>
+                <button class="nav-btn" data-module="pcm">
+                    Modulación PCM
+                    <span class="nav-badge">Pulsos / ADC</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <p><strong>Simulador Ondas</strong></p>
+            <p>Modulaciones AM, ASK, FSK y PCM en tiempo y frecuencia.</p>
+        </div>
+    </aside>
+
+    <!-- ====================================================================
+         Main Wrapper
+         ==================================================================== -->
+    <main class="main-wrapper">
+        <!-- Top Header -->
+        <header class="top-header">
+            <div class="header-info">
+                <h2 id="page-title">Modulación de Amplitud (AM)</h2>
+                <p id="page-subtitle">Variación lineal de la envolvente de la portadora según la señal de información analógica.</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-ghost" id="btn-reset" title="Restaurar parámetros por defecto">↺ Reiniciar</button>
+                <button class="btn btn-primary" id="btn-simulate" title="Ejecutar simulación (Ctrl + Enter)">Simular</button>
+            </div>
+        </header>
+
+        <!-- Banner de Error / Información -->
+        <div class="alert-banner" id="alert-banner">
+            <span id="alert-msg">Mensaje informativo</span>
+        </div>
+
+        <!-- ================================================================
+             Work Area
+             ================================================================ -->
+        <div id="simulation-view">
+            <!-- Ribbon de Métricas (4 Tarjetas KPIs) -->
+            <section class="metrics-ribbon">
+                <div class="metric-card" id="card-m1">
+                    <span class="metric-title" id="m1-title">Métrica 1</span>
+                    <span class="metric-value" id="m1-value">0.00</span>
+                    <span class="metric-caption" id="m1-caption">Descripción</span>
+                </div>
+                <div class="metric-card" id="card-m2">
+                    <span class="metric-title" id="m2-title">Métrica 2</span>
+                    <span class="metric-value" id="m2-value">0.00</span>
+                    <span class="metric-caption" id="m2-caption">Descripción</span>
+                </div>
+                <div class="metric-card" id="card-m3">
+                    <span class="metric-title" id="m3-title">Métrica 3</span>
+                    <span class="metric-value" id="m3-value">0.00</span>
+                    <span class="metric-caption" id="m3-caption">Descripción</span>
+                </div>
+                <div class="metric-card" id="card-m4">
+                    <span class="metric-title" id="m4-title">Métrica 4</span>
+                    <span class="metric-value" id="m4-value">0.00</span>
+                    <span class="metric-caption" id="m4-caption">Descripción</span>
+                </div>
+            </section>
+
+            <!-- Workspace: Controles a la izquierda, Gráficas a la derecha -->
+            <section class="workspace">
+                <!-- Columna de Controles -->
+                <div class="control-sidebar">
+                    
+                    <!-- 1. Formulario AM -->
+                    <div class="control-card module-card" id="ctrl-am">
+                        <div class="control-card-header">Parámetros AM</div>
+                        <div class="control-card-body">
+                            <div class="form-group">
+                                <label for="am-vm">Amplitud Moduladora Vm <span class="unit">(V)</span></label>
+                                <input type="number" class="form-control" id="am-vm" value="0.8" min="0.1" max="2.0" step="0.05">
+                            </div>
+                            <div class="form-group">
+                                <label for="am-fm">Frecuencia Moduladora fm <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="am-fm" value="100" min="10" max="500" step="10">
+                            </div>
+                            <div class="form-group">
+                                <label for="am-vp">Amplitud Portadora Vp <span class="unit">(V)</span></label>
+                                <input type="number" class="form-control" id="am-vp" value="1.0" min="0.5" max="2.0" step="0.1">
+                            </div>
+                            <div class="form-group">
+                                <label for="am-fp">Frecuencia Portadora fp <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="am-fp" value="1000" min="200" max="5000" step="50">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Formulario ASK -->
+                    <div class="control-card module-card" id="ctrl-ask" style="display:none;">
+                        <div class="control-card-header">Parámetros ASK</div>
+                        <div class="control-card-body">
+                            <div class="form-group">
+                                <label for="ask-bits">Secuencia de bits <span class="unit">(8 a 12 bits)</span></label>
+                                <input type="text" class="form-control" id="ask-bits" value="10110100" maxlength="16" style="font-family:var(--font-mono); font-weight:600; letter-spacing:1px;">
+                            </div>
+                            <div class="form-group">
+                                <label for="ask-rb">Tasa de bits Rb <span class="unit">(bps)</span></label>
+                                <input type="number" class="form-control" id="ask-rb" value="100" min="20" max="1000" step="10">
+                            </div>
+                            <div class="form-group">
+                                <label for="ask-fp">Frecuencia Portadora fp <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="ask-fp" value="400" min="100" max="2000" step="50">
+                            </div>
+                            <div class="form-group">
+                                <label for="ask-v0">Amplitud para bit "0"</label>
+                                <select class="form-select" id="ask-v0">
+                                    <option value="0.0">0 V (OOK - On-Off Keying)</option>
+                                    <option value="0.3">0.3 V (2 niveles distintos de voltaje)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Formulario FSK -->
+                    <div class="control-card module-card" id="ctrl-fsk" style="display:none;">
+                        <div class="control-card-header">Parámetros FSK</div>
+                        <div class="control-card-body">
+                            <div class="form-group">
+                                <label for="fsk-bits">Secuencia de bits <span class="unit">(8 a 12 bits)</span></label>
+                                <input type="text" class="form-control" id="fsk-bits" value="10110100" maxlength="16" style="font-family:var(--font-mono); font-weight:600; letter-spacing:1px;">
+                            </div>
+                            <div class="form-group">
+                                <label for="fsk-rb">Tasa de bits Rb <span class="unit">(bps)</span></label>
+                                <input type="number" class="form-control" id="fsk-rb" value="100" min="20" max="1000" step="10">
+                            </div>
+                            <div class="form-group">
+                                <label for="fsk-f0">Frecuencia bit "0" (f0) <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="fsk-f0" value="200" min="50" max="2000" step="50">
+                            </div>
+                            <div class="form-group">
+                                <label for="fsk-f1">Frecuencia bit "1" (f1) <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="fsk-f1" value="600" min="50" max="3000" step="50">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Formulario PCM -->
+                    <div class="control-card module-card" id="ctrl-pcm" style="display:none;">
+                        <div class="control-card-header">Parámetros PCM</div>
+                        <div class="control-card-body">
+                            <div class="form-group">
+                                <label for="pcm-fm">Frecuencia Señal fm <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="pcm-fm" value="10" min="2" max="50" step="1">
+                            </div>
+                            <div class="form-group">
+                                <label for="pcm-fs">Frecuencia de Muestreo fs <span class="unit">(Hz)</span></label>
+                                <input type="number" class="form-control" id="pcm-fs" value="60" min="10" max="120" step="5">
+                            </div>
+                            <div class="form-group">
+                                <label for="pcm-nbits">Bits por muestra (n)</label>
+                                <select class="form-select" id="pcm-nbits">
+                                    <option value="2">2 bits (4 niveles de cuantificación)</option>
+                                    <option value="3" selected>3 bits (8 niveles de cuantificación)</option>
+                                    <option value="4">4 bits (16 niveles de cuantificación)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Columna de Gráficas -->
+                <div class="plots-column">
+                    
+                    <!-- Gráficas AM (3 Gráficas) -->
+                    <div class="plots-grid module-plots" id="plots-am">
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">1. Señal Moduladora y Señal Portadora</span>
+                                    <span class="plot-card-desc">Comparación de la señal de información (baja frecuencia fm) frente a la portadora (alta frecuencia fp).</span>
+                                </div>
+                                <span class="plot-card-badge">Tiempo</span>
+                            </div>
+                            <div class="plot-canvas" id="am-plot-mod-carrier"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">2. Señal Modulada AM</span>
+                                    <span class="plot-card-desc">Onda v(t) = [Vp + vm(t)]·sin(2π fp t) con envolventes punteadas para visualizar sobremodulación (M > 100%).</span>
+                                </div>
+                                <span class="plot-card-badge">Tiempo</span>
+                            </div>
+                            <div class="plot-canvas" id="am-plot-modulated"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">3. Espectro de Frecuencias AM</span>
+                                    <span class="plot-card-desc">Espectro de 3 impulsos en fp - fm (BLI), fp (portadora) y fp + fm (BLS) sin ruido espectral.</span>
+                                </div>
+                                <span class="plot-card-badge">Frecuencia</span>
+                            </div>
+                            <div class="plot-canvas" id="am-plot-spectrum"></div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficas ASK (4 Gráficas alineadas en tiempo) -->
+                    <div class="plots-grid module-plots" id="plots-ask" style="display:none;">
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">1. Señal Moduladora Digital (Tren de Pulsos)</span>
+                                    <span class="plot-card-desc">Onda cuadrada unipolar mostrando los niveles lógicos con su bit etiquetado en cada intervalo Tb.</span>
+                                </div>
+                                <span class="plot-card-badge">Bits</span>
+                            </div>
+                            <div class="plot-canvas" id="ask-plot-bits"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">2. Señal Portadora Analógica</span>
+                                    <span class="plot-card-desc">Onda senoidal continua vp(t) = Vp·cos(2π fp t) de frecuencia constante fp.</span>
+                                </div>
+                                <span class="plot-card-badge">Portadora</span>
+                            </div>
+                            <div class="plot-canvas" id="ask-plot-carrier"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">3. Señal Modulada ASK / OOK</span>
+                                    <span class="plot-card-desc">Presencia de portadora en los bits '1' y ausencia/atenuación en los '0', con líneas punteadas por bit.</span>
+                                </div>
+                                <span class="plot-card-badge">Modulada</span>
+                            </div>
+                            <div class="plot-canvas" id="ask-plot-modulated"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">4. Espectro de Frecuencias ASK</span>
+                                    <span class="plot-card-desc">Curva teórica continua |sin(x)/x| con lóbulo principal de ancho 2·Rb centrado en fp.</span>
+                                </div>
+                                <span class="plot-card-badge">Espectro</span>
+                            </div>
+                            <div class="plot-canvas" id="ask-plot-spectrum"></div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficas FSK (3 Gráficas) -->
+                    <div class="plots-grid module-plots" id="plots-fsk" style="display:none;">
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">1. Señal Moduladora Digital (Tren de Bits)</span>
+                                    <span class="plot-card-desc">Onda cuadrada con los valores '1' y '0' etiquetados por intervalo de bit Tb.</span>
+                                </div>
+                                <span class="plot-card-badge">Bits</span>
+                            </div>
+                            <div class="plot-canvas" id="fsk-plot-bits"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">2. Señal Modulada FSK</span>
+                                    <span class="plot-card-desc">Onda continua donde se observa mayor densidad de ciclos para el bit '1' (f1) y menor para el '0' (f0).</span>
+                                </div>
+                                <span class="plot-card-badge">Modulada</span>
+                            </div>
+                            <div class="plot-canvas" id="fsk-plot-modulated"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">3. Espectro de Frecuencias FSK</span>
+                                    <span class="plot-card-desc">Espectro analítico mostrando los dos lóbulos principales centrados en f0 y f1.</span>
+                                </div>
+                                <span class="plot-card-badge">Espectro</span>
+                            </div>
+                            <div class="plot-canvas" id="fsk-plot-spectrum"></div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficas PCM (3 Gráficas Paso a Paso) -->
+                    <div class="plots-grid module-plots" id="plots-pcm" style="display:none;">
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">Etapa 1 - Muestreo (Teorema de Nyquist)</span>
+                                    <span class="plot-card-desc">Señal analógica continua X(t) y muestras PAM cada Ts = 1/fs. En rojo punteado: aliasing si fs &lt; 2fm.</span>
+                                </div>
+                                <span class="plot-card-badge">Etapa 1</span>
+                            </div>
+                            <div class="plot-canvas" id="pcm-plot-sampling"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">Etapa 2 - Cuantificación Discreta Uniforme</span>
+                                    <span class="plot-card-desc">División en 2^n niveles etiquetados con su código binario, aproximando cada muestra al nivel más cercano.</span>
+                                </div>
+                                <span class="plot-card-badge">Etapa 2</span>
+                            </div>
+                            <div class="plot-canvas" id="pcm-plot-quantization"></div>
+                        </div>
+
+                        <div class="plot-card">
+                            <div class="plot-card-header">
+                                <div class="plot-card-title-group">
+                                    <span class="plot-card-title">Etapa 3 - Codificación Binaria y Tren de Pulsos</span>
+                                    <span class="plot-card-desc">Palabras binarias de n bits por muestra concatenadas en serie a una tasa Rb = fs × n bps.</span>
+                                </div>
+                                <span class="plot-card-badge">Etapa 3</span>
+                            </div>
+                            <div class="plot-canvas" id="pcm-plot-coding"></div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- App Coordinator JS (Autónomo, funciona con file:// y http://) -->
+    <script src="js/app.js?v=2.1"></script>
+</body>
+</html>

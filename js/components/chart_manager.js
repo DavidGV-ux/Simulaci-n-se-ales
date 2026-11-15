@@ -1,73 +1,69 @@
 /**
  * chart_manager.js
- * Visualización interactiva con Plotly.js usando la paleta solicitada:
- * #2D2300, #5A4500, #876801, #B48A01, #E1AD01, #EAC64D, #F0D680, #F6E6B3, #FAF3D9
- * 
- * Arquitectura Anti-Colisión:
- * Los títulos descriptivos se ubican en el encabezado HTML .plot-card-header.
- * El lienzo de Plotly se reserva exclusivamente para las trazas, leyenda flotante superior
- * sin superposición y botones de interacción.
+ * Visualización interactiva con Plotly.js para los 4 módulos didácticos.
+ * Aplica rigurosamente la paleta Golden Amber (#2D2300 a #FAF3D9) y
+ * la arquitectura anti-colisión (title: false en Plotly).
  */
 
 const PALETTE = {
     bgPaper: "#1A1400",
     bgPlot: "#120E01",
-    grid: "rgba(135, 104, 1, 0.18)",
+    grid: "rgba(135, 104, 1, 0.16)",
     zeroline: "#5A4500",
     gold900: "#2D2300",
     gold800: "#5A4500",
     gold700: "#876801",
     gold600: "#B48A01",
-    gold500: "#E1AD01", // Ámbar dorado radiante principal
+    gold500: "#E1AD01", // Ámbar principal
     gold400: "#EAC64D", // Dorado cálido brillante
     gold300: "#F0D680", // Arena dorada suave
     gold200: "#F6E6B3", // Crema claro
     gold100: "#FAF3D9", // Marfil perla de alto contraste
-    alert: "#FF6B6B",
+    alert: "#FF5C5C",
+    alertBg: "rgba(255, 92, 92, 0.15)",
+    ok: "#50E370"
 };
 
 function baseLayout(xTitle, yTitle, extra = {}) {
     return {
-        // title en false: el título está en el header HTML (.plot-card-header)
-        // evitando cualquier superposición con la leyenda o la barra de herramientas Plotly
-        title: false,
+        title: false, // El título y la descripción van en el HTML (.plot-card-header)
         paper_bgcolor: PALETTE.bgPaper,
         plot_bgcolor: PALETTE.bgPlot,
         font: { family: "Inter, system-ui, sans-serif", size: 10.5, color: PALETTE.gold200 },
-        margin: { l: 52, r: 24, t: 26, b: 38 },
+        margin: { l: 48, r: 24, t: 26, b: 36, ...extra.margin },
         xaxis: {
             title: { text: xTitle, font: { size: 10.5, color: PALETTE.gold300 } },
             gridcolor: PALETTE.grid,
             zerolinecolor: PALETTE.zeroline,
             tickfont: { size: 9.5, color: PALETTE.gold200 },
-            ...extra.xaxis,
+            ...extra.xaxis
         },
         yaxis: {
             title: { text: yTitle, font: { size: 10.5, color: PALETTE.gold300 } },
             gridcolor: PALETTE.grid,
             zerolinecolor: PALETTE.zeroline,
             tickfont: { size: 9.5, color: PALETTE.gold200 },
-            ...extra.yaxis,
+            ...extra.yaxis
         },
         legend: {
             orientation: "h",
             x: 0.02,
-            y: 1.09,
+            y: 1.10,
             xanchor: "left",
             yanchor: "bottom",
             font: { size: 10, color: PALETTE.gold100 },
             bgcolor: "rgba(45, 35, 0, 0.75)",
             bordercolor: PALETTE.gold800,
             borderwidth: 1,
-            ...extra.legend,
+            ...extra.legend
         },
         hoverlabel: {
             bgcolor: PALETTE.gold900,
             bordercolor: PALETTE.gold500,
-            font: { family: "Inter, sans-serif", size: 11, color: PALETTE.gold100 },
+            font: { family: "Inter, sans-serif", size: 11, color: PALETTE.gold100 }
         },
         autosize: true,
-        ...extra,
+        ...extra
     };
 }
 
@@ -75,7 +71,7 @@ const PLOT_CONFIG = {
     responsive: true,
     displayModeBar: true,
     displaylogo: false,
-    modeBarButtonsToRemove: ["lasso2d", "select2d"],
+    modeBarButtonsToRemove: ["lasso2d", "select2d"]
 };
 
 export class ChartManager {
@@ -99,348 +95,565 @@ export class ChartManager {
         });
     }
 
-    async renderPlot(divId, data, layout) {
+    // =======================================================================
+    // MÓDULO 1: Gráficas AM
+    // =======================================================================
+
+    renderAMModAndCarrier(divId, data) {
         const el = this.register(divId);
         if (!el || !window.Plotly) return;
-        await window.Plotly.react(el, data, layout, PLOT_CONFIG);
+
+        // Convertir tiempo a milisegundos para visualización clara
+        const tMs = Array.from(data.time).map(t => t * 1000);
+
+        const traceMod = {
+            x: tMs,
+            y: Array.from(data.vmSig),
+            name: `Moduladora vm(t) [${data.kpis.fm} Hz, ${data.kpis.vm} V]`,
+            mode: "lines",
+            line: { color: PALETTE.gold100, width: 2.2 }
+        };
+
+        const traceCarrier = {
+            x: tMs,
+            y: Array.from(data.vpSig),
+            name: `Portadora vp(t) [${data.kpis.fp} Hz, ${data.kpis.vp} V]`,
+            mode: "lines",
+            line: { color: PALETTE.gold500, width: 1.0 }
+        };
+
+        const layout = baseLayout("Tiempo (ms)", "Amplitud (V)", {
+            yaxis: { range: [-data.kpis.vp * 1.35, data.kpis.vp * 1.35] }
+        });
+
+        window.Plotly.react(el, [traceMod, traceCarrier], layout, PLOT_CONFIG);
     }
 
-    downloadPNG(divId, filename = "grafica.png") {
-        const el = typeof divId === "string" ? document.getElementById(divId) : divId;
+    renderAMModulated(divId, data) {
+        const el = this.register(divId);
         if (!el || !window.Plotly) return;
-        window.Plotly.downloadImage(el, { format: "png", filename, width: 1200, height: 700 });
+
+        const tMs = Array.from(data.time).map(t => t * 1000);
+
+        const traceAM = {
+            x: tMs,
+            y: Array.from(data.amSig),
+            name: `Señal AM v(t) (m=${data.kpis.m})`,
+            mode: "lines",
+            line: { color: PALETTE.gold400, width: 1.3 }
+        };
+
+        const traceUpper = {
+            x: tMs,
+            y: Array.from(data.envUpper),
+            name: "Envolvente Superior",
+            mode: "lines",
+            line: { color: data.kpis.isOvermodulated ? PALETTE.alert : PALETTE.gold200, width: 1.6, dash: "dash" }
+        };
+
+        const traceLower = {
+            x: tMs,
+            y: Array.from(data.envLower),
+            name: "Envolvente Inferior",
+            mode: "lines",
+            line: { color: data.kpis.isOvermodulated ? PALETTE.alert : PALETTE.gold200, width: 1.6, dash: "dash" }
+        };
+
+        const maxAmp = (parseFloat(data.kpis.vp) + parseFloat(data.kpis.vm)) * 1.25;
+        const layout = baseLayout("Tiempo (ms)", "Amplitud (V)", {
+            yaxis: { range: [-maxAmp, maxAmp] }
+        });
+
+        window.Plotly.react(el, [traceAM, traceUpper, traceLower], layout, PLOT_CONFIG);
     }
 
-    // -----------------------------------------------------------------------
-    // RENDERIZADO MÓDULO AM
-    // -----------------------------------------------------------------------
-    renderAM(res, cfg) {
-        const tMs = Array.from(res.t).map((v) => v * 1000.0);
-        const maxMs = tMs[0] + (4.0 / cfg.fm) * 1000.0;
-        let zoomLen = 0;
-        while (zoomLen < tMs.length && tMs[zoomLen] <= maxMs) zoomLen++;
-        zoomLen = Math.max(10, Math.min(zoomLen, tMs.length));
+    renderAMSpectrum(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
 
-        const tZoom = tMs.slice(0, zoomLen);
-        const msgZoom = Array.from(res.message.subarray(0, zoomLen));
-        const envZoom = Array.from(res.env.subarray(0, zoomLen));
-        const cohZoom = Array.from(res.coh.subarray(0, zoomLen));
-        const txZoom = Array.from(res.tx.subarray(0, zoomLen));
-        const gain = Math.max(res.report.gainLinear, 1e-30);
-        const rxZoom = Array.from(res.rx.subarray(0, zoomLen)).map((v) => v / gain);
+        const spec = data.spectrum;
+        const freqs = spec.freqs;
+        const amps = spec.amps;
 
-        // 1) Recuperación
-        this.renderPlot(
-            "am-plot-recovery",
-            [
-                { x: tZoom, y: msgZoom, name: "m(t) Original", mode: "lines", line: { color: PALETTE.gold100, width: 2.2 } },
-                { x: tZoom, y: envZoom, name: "Det. Envolvente", mode: "lines", line: { color: PALETTE.gold400, width: 1.4 } },
-                { x: tZoom, y: cohZoom, name: "Det. Coherente", mode: "lines", line: { color: PALETTE.gold200, width: 1.3, dash: "dot" } },
-            ],
-            baseLayout("Tiempo (ms)", "Amplitud normalizada", {
-                yaxis: { range: [-1.8, 1.8] },
-            })
-        );
-
-        // 2) Señal de RF
-        this.renderPlot(
-            "am-plot-rf",
-            [
-                { x: tZoom, y: txZoom, name: "TX", mode: "lines", line: { color: PALETTE.gold500, width: 1.1 } },
-                { x: tZoom, y: rxZoom, name: "RX / Ganancia", mode: "lines", line: { color: PALETTE.gold300, width: 0.9 }, opacity: 0.85 },
-            ],
-            baseLayout("Tiempo (ms)", "Amplitud")
-        );
-
-        // 3) Espectro
-        const fTx = Array.from(res.spectrumTxF).map((v) => v / 1000.0);
-        const fRx = Array.from(res.spectrumRxF).map((v) => v / 1000.0);
-        const sTx = Array.from(res.spectrumTxDb);
-        const sRx = Array.from(res.spectrumRxDb);
-        const fMaxKhz = Math.min(cfg.fs / 2000.0, (cfg.fc + 6 * cfg.fm) / 1000.0);
-
-        this.renderPlot(
-            "am-plot-spectrum",
-            [
-                { x: fTx, y: sTx, name: "TX", mode: "lines", line: { color: PALETTE.gold500, width: 1.3 } },
-                { x: fRx, y: sRx, name: "RX", mode: "lines", line: { color: PALETTE.gold300, width: 0.9 }, opacity: 0.75 },
-            ],
-            baseLayout("Frecuencia (kHz)", "Magnitud (dB)", {
-                xaxis: { range: [0, fMaxKhz] },
-                yaxis: { range: [-90, 5] },
-                shapes: [
-                    { type: "line", x0: (cfg.fc - cfg.fm) / 1000, x1: (cfg.fc - cfg.fm) / 1000, y0: -90, y1: 5, line: { color: PALETTE.gold700, dash: "dot", width: 1 } },
-                    { type: "line", x0: cfg.fc / 1000, x1: cfg.fc / 1000, y0: -90, y1: 5, line: { color: PALETTE.gold600, dash: "dash", width: 1 } },
-                    { type: "line", x0: (cfg.fc + cfg.fm) / 1000, x1: (cfg.fc + cfg.fm) / 1000, y0: -90, y1: 5, line: { color: PALETTE.gold700, dash: "dot", width: 1 } },
-                ],
-            })
-        );
-
-    }
-
-    // -----------------------------------------------------------------------
-    // RENDERIZADO MÓDULO ASK / OOK
-    // -----------------------------------------------------------------------
-    renderASK(res, curve, cfg) {
-        const tMs = Array.from(res.t).map((v) => v * 1000.0);
-        const nshow = Math.min(24, res.nbits);
-        const maxMs = tMs[0] + (nshow / res.rb) * 1000.0;
-        let zoomLen = 0;
-        while (zoomLen < tMs.length && tMs[zoomLen] <= maxMs) zoomLen++;
-        const tZoom = tMs.slice(0, zoomLen);
-        const txZoom = Array.from(res.tx.subarray(0, zoomLen));
-        const gain = Math.max(res.report.gainLinear, 1e-30);
-        const rxZoom = Array.from(res.rx.subarray(0, zoomLen)).map((v) => v / gain);
-
-        const bitCenters = [];
-        const bitMarkers = [];
-        for (let b = 0; b < nshow; b++) {
-            bitCenters.push((b + 0.5) * (1000.0 / res.rb));
-            bitMarkers.push(res.detected[b] * cfg.amplitude * 1.15);
+        // Construir líneas verticales (stems) para los 3 impulsos
+        const stemX = [];
+        const stemY = [];
+        for (let i = 0; i < freqs.length; i++) {
+            stemX.push(freqs[i], freqs[i], null);
+            stemY.push(0, amps[i], null);
         }
 
-        // 1) Forma de onda
-        this.renderPlot(
-            "ask-plot-waveform",
-            [
-                { x: tZoom, y: txZoom, name: "TX", mode: "lines", line: { color: PALETTE.gold500, width: 1.2 } },
-                { x: tZoom, y: rxZoom, name: "RX / Ganancia", mode: "lines", line: { color: PALETTE.gold300, width: 0.9 }, opacity: 0.8 },
-                { x: bitCenters, y: bitMarkers, name: "Bits detectados", mode: "markers", marker: { color: PALETTE.gold100, size: 7, line: { color: PALETTE.gold500, width: 1.5 } } },
-            ],
-            baseLayout("Tiempo (ms)", "Amplitud")
-        );
+        const traceStems = {
+            x: stemX,
+            y: stemY,
+            mode: "lines",
+            name: "Impulsos Espectrales",
+            line: { color: PALETTE.gold500, width: 3.5 },
+            hoverinfo: "skip"
+        };
 
-        // 2) Espectro
-        const fKhz = Array.from(res.spectrumF).map((v) => v / 1000.0);
-        const sDb = Array.from(res.spectrumDb);
-        const fcKhz = res.extras.fc / 1000.0;
-        const rbKhz = res.rb / 1000.0;
+        const traceHeads = {
+            x: freqs,
+            y: amps,
+            mode: "markers+text",
+            name: "Amplitud de Tonos",
+            text: spec.labels.map((l, i) => `${amps[i].toFixed(2)} V`),
+            textposition: "top center",
+            textfont: { color: PALETTE.gold100, size: 10 },
+            marker: { color: PALETTE.gold400, size: 11, symbol: "circle", line: { color: PALETTE.gold900, width: 2 } },
+            hovertemplate: "%{text}<br>f = %{x:.0f} Hz<extra></extra>"
+        };
 
-        this.renderPlot(
-            "ask-plot-spectrum",
-            [{ x: fKhz, y: sDb, name: "TX", mode: "lines", line: { color: PALETTE.gold500, width: 1.2 } }],
-            baseLayout("Frecuencia (kHz)", "Magnitud (dB)", {
-                xaxis: { range: [0, Math.min(res.fs / 2000.0, fcKhz + 6 * rbKhz)] },
-                yaxis: { range: [-80, 5] },
-                shapes: [
-                    { type: "line", x0: fcKhz, x1: fcKhz, y0: -80, y1: 5, line: { color: PALETTE.gold600, dash: "dot", width: 1 } },
-                ],
-            })
-        );
+        const fMin = Math.max(0, freqs[0] - 250);
+        const fMax = freqs[2] + 250;
+        const yMax = Math.max(...amps) * 1.35;
 
-        // 4) Curva BER
-        const ebn0Vals = Array.from(curve.ebn0Db);
-        const berTheoryVals = Array.from(curve.berTheory).map((v) => Math.max(v, 1e-7));
-        const berSimVals = Array.from(curve.berSim).map((v) => Math.max(v, 0.5 / curve.nbits));
-        const actualEbn0 = res.ebn0EffDb;
+        const layout = baseLayout("Frecuencia (Hz)", "Amplitud (V)", {
+            xaxis: { range: [fMin, fMax] },
+            yaxis: { range: [0, yMax] }
+        });
 
-        const berTraces = [
-            { x: ebn0Vals, y: berTheoryVals, name: "Teoría AWGN", mode: "lines", line: { color: PALETTE.gold700, width: 1.6 } },
-            { x: ebn0Vals, y: berSimVals, name: `Monte Carlo (${curve.nbits} b)`, mode: "lines+markers", line: { color: PALETTE.gold500, width: 1.2 }, marker: { size: 5 } },
-        ];
-        if (isFinite(actualEbn0)) {
-            const yAct = res.ber > 0 ? res.ber : 0.5 / res.nbits;
-            berTraces.push({
-                x: [actualEbn0],
-                y: [yAct],
-                name: "Punto de Operación Actual",
-                mode: "markers",
-                marker: { color: PALETTE.gold100, size: 9, line: { color: PALETTE.gold500, width: 2 } },
+        window.Plotly.react(el, [traceStems, traceHeads], layout, PLOT_CONFIG);
+    }
+
+    // =======================================================================
+    // MÓDULO 2: Gráficas ASK
+    // =======================================================================
+
+    _getBitShapesAndAnnotations(bitBoundaries, bitLabels, yTop = 1.3) {
+        const shapes = [];
+        for (let t of bitBoundaries) {
+            shapes.push({
+                type: "line",
+                x0: t * 1000,
+                x1: t * 1000,
+                y0: -2.0,
+                y1: 2.0,
+                line: { color: PALETTE.gold800, width: 1.2, dash: "dot" }
             });
         }
 
-        this.renderPlot(
-            "ask-plot-ber",
-            berTraces,
-            baseLayout("Eb/N0 (dB)", "BER", {
-                yaxis: { type: "log", range: [-6, 0] },
-                xaxis: { range: [ebn0Vals[0], ebn0Vals[ebn0Vals.length - 1]] },
-            })
-        );
+        const annotations = bitLabels.map(b => ({
+            x: b.tCenter * 1000,
+            y: yTop,
+            xref: "x",
+            yref: "y",
+            text: `<b>${b.val}</b>`,
+            showarrow: false,
+            font: { size: 12, color: PALETTE.gold100 }
+        }));
+
+        return { shapes, annotations };
     }
 
-    // -----------------------------------------------------------------------
-    // RENDERIZADO MÓDULO FSK
-    // -----------------------------------------------------------------------
-    renderFSK(res, curve, cfg) {
-        const tMs = Array.from(res.t).map((v) => v * 1000.0);
-        const nshow = Math.min(24, res.nbits);
-        const maxMs = tMs[0] + (nshow / res.rb) * 1000.0;
-        let zoomLen = 0;
-        while (zoomLen < tMs.length && tMs[zoomLen] <= maxMs) zoomLen++;
-        const tZoom = tMs.slice(0, zoomLen);
-        const txZoom = Array.from(res.tx.subarray(0, zoomLen));
-        const gain = Math.max(res.report.gainLinear, 1e-30);
-        const rxZoom = Array.from(res.rx.subarray(0, zoomLen)).map((v) => v / gain);
+    renderASKBits(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
 
-        const bitCenters = [];
-        const bitMarkers = [];
-        for (let b = 0; b < nshow; b++) {
-            bitCenters.push((b + 0.5) * (1000.0 / res.rb));
-            bitMarkers.push((res.detected[b] * 2.0 - 1.0) * cfg.amplitude * 1.15);
+        const tMs = Array.from(data.time).map(t => t * 1000);
+        const { shapes, annotations } = this._getBitShapesAndAnnotations(data.bitBoundaries, data.bitLabels, 1.2);
+
+        const trace = {
+            x: tMs,
+            y: Array.from(data.bitsSig),
+            name: "Tren de Bits d(t)",
+            mode: "lines",
+            line: { color: PALETTE.gold500, width: 2.5, shape: "hv" }
+        };
+
+        const layout = baseLayout("Tiempo (ms)", "Nivel Lógico", {
+            yaxis: { range: [-0.25, 1.45], dtick: 1 },
+            xaxis: { range: [0, tMs[tMs.length - 1]] },
+            shapes,
+            annotations
+        });
+
+        window.Plotly.react(el, [trace], layout, PLOT_CONFIG);
+    }
+
+    renderASKCarrier(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
+
+        const tMs = Array.from(data.time).map(t => t * 1000);
+        const { shapes } = this._getBitShapesAndAnnotations(data.bitBoundaries, data.bitLabels);
+
+        const trace = {
+            x: tMs,
+            y: Array.from(data.carrierSig),
+            name: "Portadora vp(t)",
+            mode: "lines",
+            line: { color: PALETTE.gold300, width: 1.2 }
+        };
+
+        const layout = baseLayout("Tiempo (ms)", "Amplitud (V)", {
+            yaxis: { range: [-1.3, 1.3] },
+            xaxis: { range: [0, tMs[tMs.length - 1]] },
+            shapes
+        });
+
+        window.Plotly.react(el, [trace], layout, PLOT_CONFIG);
+    }
+
+    renderASKModulated(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
+
+        const tMs = Array.from(data.time).map(t => t * 1000);
+        const { shapes, annotations } = this._getBitShapesAndAnnotations(data.bitBoundaries, data.bitLabels, 1.25);
+
+        const trace = {
+            x: tMs,
+            y: Array.from(data.askSig),
+            name: "Señal Modulada ASK",
+            mode: "lines",
+            line: { color: PALETTE.gold400, width: 1.4 }
+        };
+
+        const layout = baseLayout("Tiempo (ms)", "Amplitud (V)", {
+            yaxis: { range: [-1.35, 1.45] },
+            xaxis: { range: [0, tMs[tMs.length - 1]] },
+            shapes,
+            annotations
+        });
+
+        window.Plotly.react(el, [trace], layout, PLOT_CONFIG);
+    }
+
+    renderASKSpectrum(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
+
+        const spec = data.spectrum;
+
+        const traceSinc = {
+            x: Array.from(spec.freqs),
+            y: Array.from(spec.amps),
+            name: "|sinc(f - fp)|",
+            mode: "lines",
+            fill: "tozeroy",
+            fillcolor: "rgba(225, 173, 1, 0.12)",
+            line: { color: PALETTE.gold500, width: 2.2 }
+        };
+
+        const layout = baseLayout("Frecuencia (Hz)", "Magnitud Normalizada", {
+            yaxis: { range: [0, 1.2] },
+            shapes: [
+                {
+                    type: "line",
+                    x0: spec.fp,
+                    x1: spec.fp,
+                    y0: 0,
+                    y1: 1.05,
+                    line: { color: PALETTE.gold100, width: 1.5, dash: "dash" }
+                }
+            ],
+            annotations: [
+                {
+                    x: spec.fp,
+                    y: 1.1,
+                    text: `fp = ${spec.fp} Hz`,
+                    showarrow: false,
+                    font: { size: 10, color: PALETTE.gold100 }
+                }
+            ]
+        });
+
+        window.Plotly.react(el, [traceSinc], layout, PLOT_CONFIG);
+    }
+
+    // =======================================================================
+    // MÓDULO 3: Gráficas FSK
+    // =======================================================================
+
+    renderFSKBits(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
+
+        const tMs = Array.from(data.time).map(t => t * 1000);
+        const { shapes, annotations } = this._getBitShapesAndAnnotations(data.bitBoundaries, data.bitLabels, 1.2);
+
+        const trace = {
+            x: tMs,
+            y: Array.from(data.bitsSig),
+            name: "Tren de Bits d(t)",
+            mode: "lines",
+            line: { color: PALETTE.gold500, width: 2.5, shape: "hv" }
+        };
+
+        const layout = baseLayout("Tiempo (ms)", "Nivel Lógico", {
+            yaxis: { range: [-0.25, 1.45], dtick: 1 },
+            xaxis: { range: [0, tMs[tMs.length - 1]] },
+            shapes,
+            annotations
+        });
+
+        window.Plotly.react(el, [trace], layout, PLOT_CONFIG);
+    }
+
+    renderFSKModulated(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
+
+        const tMs = Array.from(data.time).map(t => t * 1000);
+        const { shapes, annotations } = this._getBitShapesAndAnnotations(data.bitBoundaries, data.bitLabels, 1.25);
+
+        const trace = {
+            x: tMs,
+            y: Array.from(data.fskSig),
+            name: `FSK (f0=${data.kpis.f0}, f1=${data.kpis.f1})`,
+            mode: "lines",
+            line: { color: PALETTE.gold400, width: 1.4 }
+        };
+
+        const layout = baseLayout("Tiempo (ms)", "Amplitud (V)", {
+            yaxis: { range: [-1.35, 1.45] },
+            xaxis: { range: [0, tMs[tMs.length - 1]] },
+            shapes,
+            annotations
+        });
+
+        window.Plotly.react(el, [trace], layout, PLOT_CONFIG);
+    }
+
+    renderFSKSpectrum(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
+
+        const spec = data.spectrum;
+
+        const trace = {
+            x: Array.from(spec.freqs),
+            y: Array.from(spec.amps),
+            name: "Espectro FSK de 2 Tonos",
+            mode: "lines",
+            fill: "tozeroy",
+            fillcolor: "rgba(225, 173, 1, 0.12)",
+            line: { color: PALETTE.gold500, width: 2.2 }
+        };
+
+        const layout = baseLayout("Frecuencia (Hz)", "Magnitud Normalizada", {
+            yaxis: { range: [0, 1.15] },
+            shapes: [
+                {
+                    type: "line",
+                    x0: spec.f0,
+                    x1: spec.f0,
+                    y0: 0,
+                    y1: 0.65,
+                    line: { color: PALETTE.gold300, width: 1.5, dash: "dash" }
+                },
+                {
+                    type: "line",
+                    x0: spec.f1,
+                    x1: spec.f1,
+                    y0: 0,
+                    y1: 0.65,
+                    line: { color: PALETTE.gold300, width: 1.5, dash: "dash" }
+                }
+            ],
+            annotations: [
+                {
+                    x: spec.f0,
+                    y: 0.72,
+                    text: `f0 = ${spec.f0} Hz (bit '0')`,
+                    showarrow: false,
+                    font: { size: 10, color: PALETTE.gold200 }
+                },
+                {
+                    x: spec.f1,
+                    y: 0.72,
+                    text: `f1 = ${spec.f1} Hz (bit '1')`,
+                    showarrow: false,
+                    font: { size: 10, color: PALETTE.gold200 }
+                }
+            ]
+        });
+
+        window.Plotly.react(el, [trace], layout, PLOT_CONFIG);
+    }
+
+    // =======================================================================
+    // MÓDULO 4: Gráficas PCM (Paso a Paso Didáctico)
+    // =======================================================================
+
+    renderPCMSampling(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
+
+        const tContMs = Array.from(data.timeCont).map(t => t * 1000);
+        const tSampleMs = Array.from(data.sampleTimes).map(t => t * 1000);
+
+        const traceAnalog = {
+            x: tContMs,
+            y: Array.from(data.analogCont),
+            name: `Señal Original X(t) [${data.kpis.fm}]`,
+            mode: "lines",
+            line: { color: PALETTE.gold100, width: 2.0 }
+        };
+
+        // Pulsos PAM de muestreo (stems verticales)
+        const stemX = [];
+        const stemY = [];
+        for (let i = 0; i < data.sampleTimes.length; i++) {
+            stemX.push(tSampleMs[i], tSampleMs[i], null);
+            stemY.push(0, data.sampleVals[i], null);
         }
 
-        // 1) Forma de onda
-        this.renderPlot(
-            "fsk-plot-waveform",
-            [
-                { x: tZoom, y: txZoom, name: "TX", mode: "lines", line: { color: PALETTE.gold500, width: 1.2 } },
-                { x: tZoom, y: rxZoom, name: "RX / Ganancia", mode: "lines", line: { color: PALETTE.gold300, width: 0.9 }, opacity: 0.8 },
-                { x: bitCenters, y: bitMarkers, name: "Bits detectados", mode: "markers", marker: { color: PALETTE.gold100, size: 7, line: { color: PALETTE.gold500, width: 1.5 } } },
-            ],
-            baseLayout("Tiempo (ms)", "Amplitud")
-        );
+        const tracePAMStems = {
+            x: stemX,
+            y: stemY,
+            mode: "lines",
+            name: `Muestras PAM (fs=${data.kpis.fs})`,
+            line: { color: PALETTE.gold500, width: 2.5 },
+            hoverinfo: "skip"
+        };
 
-        // 2) Frecuencia estimada por bit
-        const tBitMs = Array.from(res.tBit).map((v) => v * 1000.0);
-        const fBitKhz = Array.from(res.fBit).map((v) => v / 1000.0);
-        const f0Khz = res.extras.f0 / 1000.0;
-        const f1Khz = res.extras.f1 / 1000.0;
-        const nInstShow = Math.min(nshow, tBitMs.length);
+        const tracePAMMarkers = {
+            x: tSampleMs,
+            y: Array.from(data.sampleVals),
+            mode: "markers",
+            name: "Instantes de Muestra",
+            marker: { color: PALETTE.gold400, size: 8, symbol: "circle" },
+            hovertemplate: "t: %{x:.1f} ms<br>V: %{y:.2f} V<extra></extra>"
+        };
 
-        this.renderPlot(
-            "fsk-plot-freq",
-            [
-                { x: tBitMs.slice(0, nInstShow), y: fBitKhz.slice(0, nInstShow), name: "f estimada", mode: "lines+markers", line: { shape: "hv", color: PALETTE.gold400, width: 1.5 } },
-            ],
-            baseLayout("Tiempo (ms)", "Frecuencia (kHz)", {
-                shapes: [
-                    { type: "line", x0: 0, x1: tBitMs[nInstShow - 1], y0: f0Khz, y1: f0Khz, line: { color: PALETTE.gold600, dash: "dash", width: 1 } },
-                    { type: "line", x0: 0, x1: tBitMs[nInstShow - 1], y0: f1Khz, y1: f1Khz, line: { color: PALETTE.gold500, dash: "dash", width: 1 } },
-                ],
-                yaxis: { range: [Math.min(f0Khz, f1Khz) - 1.5, Math.max(f0Khz, f1Khz) + 1.5] },
-            })
-        );
+        const traces = [traceAnalog, tracePAMStems, tracePAMMarkers];
 
-        // 3) Espectro
-        const fKhz = Array.from(res.spectrumF).map((v) => v / 1000.0);
-        const sDb = Array.from(res.spectrumDb);
-        this.renderPlot(
-            "fsk-plot-spectrum",
-            [{ x: fKhz, y: sDb, name: "TX", mode: "lines", line: { color: PALETTE.gold500, width: 1.2 } }],
-            baseLayout("Frecuencia (kHz)", "Magnitud (dB)", {
-                xaxis: { range: [Math.max(0, f0Khz - 4 * (cfg.rb / 1000.0)), f1Khz + 4 * (cfg.rb / 1000.0)] },
-                yaxis: { range: [-80, 5] },
-                shapes: [
-                    { type: "line", x0: f0Khz, x1: f0Khz, y0: -80, y1: 5, line: { color: PALETTE.gold600, dash: "dash", width: 1 } },
-                    { type: "line", x0: f1Khz, x1: f1Khz, y0: -80, y1: 5, line: { color: PALETTE.gold500, dash: "dash", width: 1 } },
-                ],
-            })
-        );
-
-        // 4) Curva BER
-        const ebn0Vals = Array.from(curve.ebn0Db);
-        const berTheoryVals = Array.from(curve.berTheory).map((v) => Math.max(v, 1e-7));
-        const berSimVals = Array.from(curve.berSim).map((v) => Math.max(v, 0.5 / curve.nbits));
-        const actualEbn0 = res.ebn0EffDb;
-
-        const berTraces = [
-            { x: ebn0Vals, y: berTheoryVals, name: "Teoría AWGN", mode: "lines", line: { color: PALETTE.gold700, width: 1.6 } },
-            { x: ebn0Vals, y: berSimVals, name: `Monte Carlo (${curve.nbits} b)`, mode: "lines+markers", line: { color: PALETTE.gold500, width: 1.2 }, marker: { size: 5 } },
-        ];
-        if (isFinite(actualEbn0)) {
-            const yAct = res.ber > 0 ? res.ber : 0.5 / res.nbits;
-            berTraces.push({
-                x: [actualEbn0],
-                y: [yAct],
-                name: "Punto de Operación Actual",
-                mode: "markers",
-                marker: { color: PALETTE.gold100, size: 9, line: { color: PALETTE.gold500, width: 2 } },
+        // Si hay aliasing, graficar en línea punteada roja la onda aparente
+        if (!data.kpis.meetsNyquist && data.aliasSignal) {
+            traces.push({
+                x: tContMs,
+                y: Array.from(data.aliasSignal),
+                name: `Reconstrucción con Aliasing (f_alias=${data.fAlias.toFixed(1)} Hz)`,
+                mode: "lines",
+                line: { color: PALETTE.alert, width: 2.2, dash: "dot" }
             });
         }
 
-        this.renderPlot(
-            "fsk-plot-ber",
-            berTraces,
-            baseLayout("Eb/N0 (dB)", "BER", {
-                yaxis: { type: "log", range: [-6, 0] },
-                xaxis: { range: [ebn0Vals[0], ebn0Vals[ebn0Vals.length - 1]] },
-            })
-        );
+        const layout = baseLayout("Tiempo (ms)", "Amplitud (V)", {
+            yaxis: { range: [-1.35, 1.35] }
+        });
+
+        window.Plotly.react(el, traces, layout, PLOT_CONFIG);
     }
 
-    // -----------------------------------------------------------------------
-    // RENDERIZADO MÓDULO PCM
-    // -----------------------------------------------------------------------
-    renderPCM(res, cfg) {
-        const tAnalogMs = Array.from(res.tAnalog).map((v) => v * 1000.0);
-        const maxMs = Math.min(cfg.duration * 1000.0, 10.0);
-        let mLen = 0;
-        while (mLen < tAnalogMs.length && tAnalogMs[mLen] <= maxMs) mLen++;
+    renderPCMQuantization(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
 
-        const tZoom = tAnalogMs.slice(0, mLen);
-        const xAnalogZoom = Array.from(res.xAnalog.subarray(0, mLen));
-        const xZohZoom = Array.from(res.xZoh.subarray(0, mLen));
-        const xRecZoom = Array.from(res.xRec.subarray(0, mLen));
+        const tContMs = Array.from(data.timeCont).map(t => t * 1000);
+        const tSampleMs = Array.from(data.sampleTimes).map(t => t * 1000);
 
-        const tSMs = Array.from(res.tS).map((v) => v * 1000.0);
-        let sLen = 0;
-        while (sLen < tSMs.length && tSMs[sLen] <= maxMs) sLen++;
-        const tSZoom = tSMs.slice(0, sLen);
-        const xSZoom = Array.from(res.xS.subarray(0, sLen));
-        const xqZoom = Array.from(res.xq.subarray(0, sLen));
-        const qerrZoom = Array.from(res.qerr.subarray(0, sLen)).map((v) => v * 1000.0);
+        // Curva analógica continua tenue de referencia
+        const traceRef = {
+            x: tContMs,
+            y: Array.from(data.analogCont),
+            name: "Señal de Entrada",
+            mode: "lines",
+            line: { color: PALETTE.gold700, width: 1.2 }
+        };
 
-        // 1) Muestreo y Cuantificación
-        this.renderPlot(
-            "pcm-plot-sampling",
-            [
-                { x: tZoom, y: xAnalogZoom, name: "Analógica", mode: "lines", line: { color: PALETTE.gold100, width: 1.5 } },
-                { x: tSZoom, y: xSZoom, name: "Muestras", mode: "markers", marker: { color: PALETTE.gold500, size: 5 } },
-                { x: tSZoom, y: xqZoom, name: "Cuantificada", mode: "markers", marker: { color: PALETTE.gold400, size: 4, symbol: "square" } },
-            ],
-            baseLayout("Tiempo (ms)", "Amplitud (V)")
-        );
+        // Muestras analógicas
+        const traceSamples = {
+            x: tSampleMs,
+            y: Array.from(data.sampleVals),
+            mode: "markers",
+            name: "Muestra Original",
+            marker: { color: PALETTE.gold300, size: 7, symbol: "circle-open" }
+        };
 
-        // 2) Error de Cuantificación
-        const halfQ = (res.q * 0.5) * 1000.0;
-        this.renderPlot(
-            "pcm-plot-qerr",
-            [
-                { x: tSZoom, y: qerrZoom, name: "xq − x", mode: "lines+markers", line: { color: PALETTE.gold400, width: 1.0 }, marker: { size: 3 } },
-            ],
-            baseLayout("Tiempo (ms)", "Error (mV)", {
-                shapes: [
-                    { type: "line", x0: tSZoom[0], x1: tSZoom[sLen - 1], y0: halfQ, y1: halfQ, line: { color: PALETTE.gold600, dash: "dash", width: 1 } },
-                    { type: "line", x0: tSZoom[0], x1: tSZoom[sLen - 1], y0: -halfQ, y1: -halfQ, line: { color: PALETTE.gold600, dash: "dash", width: 1 } },
-                ],
-            })
-        );
+        // Muestras cuantificadas redondeadas al escalón
+        const traceQuant = {
+            x: tSampleMs,
+            y: Array.from(data.quantVals),
+            mode: "markers+lines",
+            name: `Nivel Cuantificado (q=${data.kpis.qStep})`,
+            marker: { color: PALETTE.gold500, size: 8, symbol: "square" },
+            line: { color: PALETTE.gold600, width: 1.5, shape: "hv" },
+            text: data.sampleBinWords,
+            hovertemplate: "t: %{x:.1f} ms<br>Nivel: %{y:.3f} V<br>Bin: %{text}<extra></extra>"
+        };
 
-        // 3) Reconstrucción
-        this.renderPlot(
-            "pcm-plot-reconstruction",
-            [
-                { x: tZoom, y: xAnalogZoom, name: "Original", mode: "lines", line: { color: PALETTE.gold100, width: 1.5 } },
-                { x: tZoom, y: xZohZoom, name: "ZOH", mode: "lines", line: { color: PALETTE.gold700, width: 1.0, dash: "dot" }, opacity: 0.7 },
-                { x: tZoom, y: xRecZoom, name: "Sinc (Reconstruida)", mode: "lines", line: { color: PALETTE.gold400, width: 1.5 } },
-                { x: tSZoom, y: xqZoom, name: "Niveles", mode: "markers", marker: { color: PALETTE.gold500, size: 4 } },
-            ],
-            baseLayout("Tiempo (ms)", "Amplitud (V)")
-        );
+        // Niveles horizontales de cuantificación con código binario a la derecha
+        const shapes = [];
+        const annotations = [];
 
-        // 4) Espectro y Aliasing
-        const fAnalogKhz = Array.from(res.spectrumAnalogF).map((v) => v / 1000.0);
-        const sAnalogDb = Array.from(res.spectrumAnalogDb);
-        const fSampledKhz = Array.from(res.spectrumSampledF).map((v) => v / 1000.0);
-        const sSampledDb = Array.from(res.spectrumSampledDb);
-        const nyqKhz = res.metrics.nyquistHz / 1000.0;
+        data.levels.forEach(lvl => {
+            shapes.push({
+                type: "line",
+                x0: 0,
+                x1: tContMs[tContMs.length - 1],
+                y0: lvl.val,
+                y1: lvl.val,
+                line: { color: PALETTE.gold800, width: 0.8, dash: "dot" }
+            });
+            annotations.push({
+                x: tContMs[tContMs.length - 1],
+                y: lvl.val,
+                xref: "x",
+                yref: "y",
+                text: `<b>${lvl.code}</b> (${lvl.val.toFixed(2)}V)`,
+                showarrow: false,
+                xanchor: "left",
+                font: { size: 9, color: PALETTE.gold200 }
+            });
+        });
 
-        this.renderPlot(
-            "pcm-plot-spectrum",
-            [
-                { x: fAnalogKhz, y: sAnalogDb, name: "Analógica", mode: "lines", line: { color: PALETTE.gold100, width: 1.3 } },
-                { x: fSampledKhz, y: sSampledDb, name: "Muestreada", mode: "lines", line: { color: PALETTE.gold500, width: 1.0 }, opacity: 0.8 },
-            ],
-            baseLayout("Frecuencia (kHz)", "Magnitud (dB)", {
-                xaxis: { range: [0, Math.min(cfg.fsSample / 2000.0, Math.max(2.5 * (cfg.fm / 1000.0), 1.5 * nyqKhz))] },
-                yaxis: { range: [-90, 5] },
-                shapes: [
-                    { type: "line", x0: cfg.fm / 1000.0, x1: cfg.fm / 1000.0, y0: -90, y1: 5, line: { color: PALETTE.gold400, dash: "dot", width: 1 } },
-                    { type: "line", x0: nyqKhz, x1: nyqKhz, y0: -90, y1: 5, line: { color: PALETTE.alert, dash: "dash", width: 1.5 } },
-                ],
-            })
-        );
+        const layout = baseLayout("Tiempo (ms)", "Niveles Cuantificados", {
+            margin: { r: 75 }, // Margen extra a la derecha para etiquetas binarias
+            yaxis: { range: [-1.25, 1.25] },
+            shapes,
+            annotations
+        });
 
+        window.Plotly.react(el, [traceRef, traceSamples, traceQuant], layout, PLOT_CONFIG);
+    }
+
+    renderPCMCoding(divId, data) {
+        const el = this.register(divId);
+        if (!el || !window.Plotly) return;
+
+        const tMs = Array.from(data.timeCoding).map(t => t * 1000);
+
+        const tracePulse = {
+            x: tMs,
+            y: Array.from(data.codeSig),
+            name: `Trama PCM (${data.kpis.nBits} bits/muestra)`,
+            mode: "lines",
+            line: { color: PALETTE.gold400, width: 2.2, shape: "hv" }
+        };
+
+        // Divisiones entre cada palabra de muestra y texto del código binario encima
+        const shapes = [];
+        const annotations = [];
+
+        data.sampleWordGroups.forEach(grp => {
+            shapes.push({
+                type: "line",
+                x0: grp.tEnd * 1000,
+                x1: grp.tEnd * 1000,
+                y0: -0.2,
+                y1: 1.35,
+                line: { color: PALETTE.gold700, width: 1.2, dash: "dash" }
+            });
+
+            annotations.push({
+                x: grp.tCenter * 1000,
+                y: 1.22,
+                text: `<b>${grp.word}</b>`,
+                showarrow: false,
+                font: { size: 11, color: PALETTE.gold100 }
+            });
+        });
+
+        const layout = baseLayout("Tiempo Relativo de Transmisión (ms)", "Nivel Lógico", {
+            yaxis: { range: [-0.2, 1.4], dtick: 1 },
+            xaxis: { range: [0, tMs[tMs.length - 1]] },
+            shapes,
+            annotations
+        });
+
+        window.Plotly.react(el, [tracePulse], layout, PLOT_CONFIG);
     }
 }
