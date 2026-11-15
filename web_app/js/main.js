@@ -87,10 +87,10 @@ function switchModule(mod) {
     else { grpSnr.style.display = "none"; grpEbn0.style.display = "flex"; }
 
     const titles = {
-        am: { title: "Modulación de Amplitud · AM", sub: "La amplitud de la portadora sigue a la moduladora. Compara el detector de envolvente con el coherente y observa la sobremodulación." },
-        ask: { title: "Amplitud Conmutada · ASK / OOK", sub: "La portadora se enciende y apaga según el bit. Analiza el espectro, diagrama de ojo, sincronización y BER." },
-        fsk: { title: "Frecuencia Conmutada · FSK", sub: "El bit selecciona una de dos frecuencias. Observa la frecuencia instantánea, ortogonalidad de tonos y detección no coherente." },
-        pcm: { title: "Modulación por Pulsos Codificados · PCM", sub: "Muestreo, cuantificación uniforme, codificación binaria y transmisión digital. Observa el umbral del enlace." },
+        am: { title: "Modulación de Amplitud · AM", sub: "La amplitud de la portadora sube y baja con el mensaje, como una ola que sigue el vaivén del mensaje. Si la subida es muy fuerte (m > 1), la señal se deforma." },
+        ask: { title: "Amplitud Conmutada · ASK / OOK", sub: "Cada bit enciende (1) o apaga (0) la portadora. Si los bits están bien separados, el receptor los entiende bien; si no, hay errores." },
+        fsk: { title: "Frecuencia Conmutada · FSK", sub: "Cada bit elige un tono: agudo (1) o grave (0). Si el ruido se mezcla, el receptor se confunde y comete errores." },
+        pcm: { title: "Modulación por Pulsos Codificados · PCM", sub: "La señal continua se convierte en muestras y luego en bits, se envía y se reconstruye. Si los bits fallan, la reconstrucción se ve afectada." },
     };
     if (titles[mod]) { pageTitle.textContent = titles[mod].title; pageSubtitle.textContent = titles[mod].sub; }
 
