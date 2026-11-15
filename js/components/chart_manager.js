@@ -114,7 +114,7 @@ export class ChartManager {
     // -----------------------------------------------------------------------
     // RENDERIZADO MÓDULO AM
     // -----------------------------------------------------------------------
-    renderAM(res, curve, cfg) {
+    renderAM(res, cfg) {
         const tMs = Array.from(res.t).map((v) => v * 1000.0);
         const maxMs = tMs[0] + (4.0 / cfg.fm) * 1000.0;
         let zoomLen = 0;
@@ -176,72 +176,6 @@ export class ChartManager {
             })
         );
 
-        // 4) Error de Demodulación
-        const trim = Math.max(5, Math.floor(tMs.length / 20));
-        const tTrim = tMs.slice(trim, tMs.length - trim);
-        const envErrTrim = Array.from(res.envErr.subarray(trim, res.envErr.length - trim));
-        const cohErrTrim = Array.from(res.cohErr.subarray(trim, res.cohErr.length - trim));
-
-        this.renderPlot(
-            "am-plot-error",
-            [
-                { x: tTrim, y: envErrTrim, name: "Error Envolvente", mode: "lines", line: { color: PALETTE.gold400, width: 1.1 } },
-                { x: tTrim, y: cohErrTrim, name: "Error Coherente", mode: "lines", line: { color: PALETTE.gold200, width: 1.1 } },
-            ],
-            baseLayout("Tiempo (ms)", "Recuperada − Original")
-        );
-
-        // 5) Curva de Fidelidad (MSE vs SNR)
-        const snrVals = Array.from(curve.snrDb);
-        const mseEnv = Array.from(curve.mseEnv).map((v) => Math.max(v, 1e-12));
-        const mseCoh = Array.from(curve.mseCoh).map((v) => Math.max(v, 1e-12));
-        const actualSnr = res.metrics.snrEffDb;
-
-        const fidelityTraces = [
-            { x: snrVals, y: mseEnv, name: "Envolvente (AWGN)", mode: "lines+markers", line: { color: PALETTE.gold400, width: 1.4 }, marker: { size: 5 } },
-            { x: snrVals, y: mseCoh, name: "Coherente (AWGN)", mode: "lines+markers", line: { color: PALETTE.gold200, width: 1.3 }, marker: { size: 5, symbol: "square" } },
-        ];
-        if (isFinite(actualSnr)) {
-            fidelityTraces.push({
-                x: [actualSnr],
-                y: [Math.max(res.metrics.mseEnv, 1e-12)],
-                name: "Punto Envolvente actual",
-                mode: "markers",
-                marker: { color: PALETTE.gold100, size: 9, line: { color: PALETTE.gold500, width: 2 } },
-            });
-            fidelityTraces.push({
-                x: [actualSnr],
-                y: [Math.max(res.metrics.mseCoh, 1e-12)],
-                name: "Punto Coherente actual",
-                mode: "markers",
-                marker: { color: PALETTE.gold500, size: 9, symbol: "square", line: { color: PALETTE.gold100, width: 1.5 } },
-            });
-        }
-
-        this.renderPlot(
-            "am-plot-fidelity",
-            fidelityTraces,
-            baseLayout("SNR nominal (dB)", "MSE", {
-                yaxis: { type: "log" },
-            })
-        );
-
-        // 6) Reparto de Potencia
-        const car = res.metrics.carrierFraction * 100.0;
-        const side = (res.metrics.sidebandFraction * 100.0) / 2.0;
-        this.renderPlot(
-            "am-plot-power",
-            [
-                { y: ["Potencia"], x: [car], name: "Portadora", type: "bar", orientation: "h", marker: { color: PALETTE.gold500 } },
-                { y: ["Potencia"], x: [side], name: "Banda Inf. (BLI)", type: "bar", orientation: "h", marker: { color: PALETTE.gold600 } },
-                { y: ["Potencia"], x: [side], name: "Banda Sup. (BLS)", type: "bar", orientation: "h", marker: { color: PALETTE.gold400 } },
-            ],
-            baseLayout("% de Potencia Total", "", {
-                barmode: "stack",
-                xaxis: { range: [0, 100] },
-                yaxis: { showticklabels: false },
-            })
-        );
     }
 
     // -----------------------------------------------------------------------
@@ -293,35 +227,6 @@ export class ChartManager {
                 ],
             })
         );
-
-        // 3) Diagrama de Ojo
-        const eyeTraces = [];
-        if (res.eye && res.eye.length > 0) {
-            const nRows = Math.min(res.eye.length, 120);
-            const sps = res.sps;
-            const ui = Array.from({ length: sps }, (_, i) => i / (sps - 1));
-            for (let i = 0; i < nRows; i++) {
-                const row = Array.from(res.eye[i]).map((v) => v / gain);
-                eyeTraces.push({
-                    x: ui,
-                    y: row,
-                    mode: "lines",
-                    line: { color: PALETTE.gold300, width: 0.6 },
-                    opacity: 0.22,
-                    showlegend: false,
-                    hoverinfo: "skip",
-                });
-            }
-            const thr = res.extras.threshold / gain;
-            eyeTraces.push({
-                x: [0, 1],
-                y: [thr, thr],
-                name: "Umbral decisión",
-                mode: "lines",
-                line: { color: PALETTE.gold100, width: 1.5, dash: "dash" },
-            });
-        }
-        this.renderPlot("ask-plot-eye", eyeTraces, baseLayout("Tiempo Normalizado (UI)", "Amplitud"));
 
         // 4) Curva BER
         const ebn0Vals = Array.from(curve.ebn0Db);
@@ -457,7 +362,7 @@ export class ChartManager {
     // -----------------------------------------------------------------------
     // RENDERIZADO MÓDULO PCM
     // -----------------------------------------------------------------------
-    renderPCM(res, bitsCurve, linkCurve, cfg) {
+    renderPCM(res, cfg) {
         const tAnalogMs = Array.from(res.tAnalog).map((v) => v * 1000.0);
         const maxMs = Math.min(cfg.duration * 1000.0, 10.0);
         let mLen = 0;
@@ -537,49 +442,5 @@ export class ChartManager {
             })
         );
 
-        // 5) SQNR vs Bits
-        const bitsArr = Array.from(bitsCurve.nBits);
-        const sqnrTheory = Array.from(bitsCurve.sqnrTheoryDb);
-        const sqnrQuant = Array.from(bitsCurve.sqnrQuantDb);
-        const sqnrRec = Array.from(bitsCurve.sqnrRecDb);
-
-        this.renderPlot(
-            "pcm-plot-sqnr-bits",
-            [
-                { x: bitsArr, y: sqnrTheory, name: "Teoría (6.02n+1.76)", mode: "lines", line: { color: PALETTE.gold700, width: 1.5 } },
-                { x: bitsArr, y: sqnrQuant, name: "Cuantificación", mode: "lines+markers", line: { color: PALETTE.gold500, width: 1.2 }, marker: { size: 5 } },
-                { x: bitsArr, y: sqnrRec, name: "Reconstrucción", mode: "lines+markers", line: { color: PALETTE.gold400, width: 1.2 }, marker: { size: 5, symbol: "square" } },
-                { x: [cfg.nBits], y: [res.sqnrDb], name: "Actual", mode: "markers", marker: { color: PALETTE.gold100, size: 9, line: { color: PALETTE.gold500, width: 2 } } },
-            ],
-            baseLayout("Bits por Muestra", "SQNR (dB)")
-        );
-
-        // 6) SQNR vs Eb/N0 (Efecto Umbral)
-        const ebn0Arr = Array.from(linkCurve.ebn0Db);
-        const sqnrLink = Array.from(linkCurve.sqnrDb);
-        const ebn0Eff = res.ebn0EffDb;
-
-        const thresholdTraces = [
-            { x: ebn0Arr, y: sqnrLink, name: "SQNR Reconstrucción", mode: "lines+markers", line: { color: PALETTE.gold400, width: 1.3 }, marker: { size: 5 } },
-        ];
-        if (isFinite(ebn0Eff)) {
-            thresholdTraces.push({
-                x: [ebn0Eff],
-                y: [res.sqnrDb],
-                name: "Punto Actual",
-                mode: "markers",
-                marker: { color: PALETTE.gold100, size: 9, line: { color: PALETTE.gold500, width: 2 } },
-            });
-        }
-
-        this.renderPlot(
-            "pcm-plot-sqnr-ebn0",
-            thresholdTraces,
-            baseLayout("Eb/N0 (dB)", "SQNR (dB)", {
-                shapes: [
-                    { type: "line", x0: ebn0Arr[0], x1: ebn0Arr[ebn0Arr.length - 1], y0: res.sqnrQuantDb, y1: res.sqnrQuantDb, line: { color: PALETTE.gold500, dash: "dash", width: 1 } },
-                ],
-            })
-        );
     }
 }
