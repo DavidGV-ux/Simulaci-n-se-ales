@@ -597,73 +597,52 @@
              ================================================================ -->
         <div class="theory-wrapper" id="theory-view">
             <article class="theory-content">
-                <h1>Marco Teórico y Fundamentos de Simulación</h1>
+                                <h1>Marco Teórico y Fundamentos de Simulación</h1>
                 <p class="lead">Laboratorio de Comunicaciones Digitales y Analógicas · AM, ASK, FSK y PCM · Formulación matemática y consideraciones prácticas.</p>
 
                 <div class="theory-note">
-                    <strong>Alcance:</strong> Esta aplicación implementa con rigor físico y matemático cuatro técnicas de comunicación:
-                    <strong>Modulación de Amplitud (AM)</strong>, <strong>Amplitud Conmutada (ASK/OOK)</strong>, <strong>Frecuencia Conmutada (FSK)</strong> y <strong>Modulación por Pulsos Codificados (PCM)</strong>. BPSK se implementa como portadora digital del enlace PCM.
+                    <strong>Alcance:</strong> Esta aplicación implementa cuatro técnicas de comunicación: <strong>Modulación de Amplitud (AM)</strong>, <strong>Amplitud Conmutada (ASK/OOK)</strong>, <strong>Frecuencia Conmutada (FSK)</strong> y <strong>Modulación por Pulsos Codificados (PCM)</strong>. BPSK se implementa como portadora digital del enlace PCM.
                 </div>
 
-                <h2>1. Modelo de Propagación y Canal Físico</h2>
-                <p>Las señales de RF sufren atenuación por dispersión geométrica en el espacio libre. La pérdida de trayectoria en espacio libre (FSL) se rige por la ecuación de Friis:</p>
+                <h2>1. Canal y ruido</h2>
+                <p>Las señales viajan por un canal y pierden fuerza al atravesarlo (atenuación). El receptor recibe menos señal, por eso la calidad (señal frente a ruido) baja.</p>
                 <div class="theory-eq">
                     FSL (dB) = 32.45 + 20 log₁₀(d_km) + 20 log₁₀(f_MHz)
                 </div>
-                <p>La atenuación total suma las pérdidas de espacio libre más cualquier pérdida extra por obstáculos, lluvia o cables:</p>
+                <p>La atenuación total suma la pérdida de espacio libre más cualquier pérdida extra (cables, obstáculos, lluvia):</p>
                 <div class="theory-eq">
                     Atenuación_total = FSL + Atenuación_extra (dB) &nbsp;⇒&nbsp; G_lineal = 10^(-Atenuación_total / 20)
                 </div>
-                <p><strong>Principio fundamental del receptor:</strong> El canal atenúa la potencia de la señal útil transmitida, pero no atenúa el ruido térmico equivalente generado en la entrada del receptor (AWGN). Por ello, al alejarse o aumentar la atenuación, la relación señal/ruido efectiva en recepción disminuye directamente:</p>
+                <p><strong>Principio del receptor:</strong> el canal atenúa la señal útil, pero no el ruido; por eso, con más pérdida, la relación señal/ruido efectiva en recepción baja:</p>
                 <div class="theory-eq">
                     SNR_efectiva ≈ SNR_nominal − Atenuación_total (dB)
                 </div>
 
-                <h2>2. Modulación de Amplitud (AM)</h2>
-                <p>En modulación AM, la envolvente de una portadora senoidal varía en proporción lineal directa con la señal moduladora:</p>
+                <h2>2. AM</h2>
+                <p>La amplitud de la portadora sube y baja con el mensaje. Si la subida es muy fuerte (m &gt; 1), la señal se deforma.</p>
                 <div class="theory-eq">
                     s(t) = V_p · [1 + m · m(t)] · sen(2π f_c t)
                 </div>
-                <p>donde <i>m = V_m / V_p</i> representa el índice de modulación.</p>
-                <ul>
-                    <li><strong>m ≤ 1 (Modulación lineal):</strong> La envolvente nunca cruza el eje cero. Un detector de envolvente (diodo rectificador + pasa-bajos) recupera la señal sin distorsión armónica.</li>
-                    <li><strong>m > 1 (Sobremodulación):</strong> La portadora experimenta inversiones de fase en los cruces por cero. El detector de envolvente recorta y distorsiona severamente. El detector coherente (multiplicación por <i>sen(2π f_c t)</i> + filtro pasa-bajos) sigue siendo lineal y recupera la señal.</li>
-                </ul>
-                <h3>Reparto de Potencia AM</h3>
-                <div class="theory-eq">
-                    P_total = P_c · (1 + m² / 2) &nbsp;&nbsp;·&nbsp;&nbsp; P_c = V_p² / 2
-                </div>
-                <p>Con <i>m = 1</i>, la portadora disipa el 66.7% de la potencia y las dos bandas laterales el 33.3% restante.</p>
+                <p>m = V_m / V_p es el índice de modulación.</p>
 
-                <h2>3. Modulación Digital ASK / OOK</h2>
-                <p>On-Off Keying (OOK) conmuta la portadora: transmite ráfaga senoidal para el bit 1 y silencio para el bit 0:</p>
+                <h2>3. ASK / OOK</h2>
+                <p>Cada bit enciende (1) o apaga (0) la portadora. BER = errores de bit / bits totales.</p>
                 <div class="theory-eq">
-                    s(t) = A · b(t) · cos(2π f_c t), &nbsp;&nbsp; b(t) ∈ {0, 1}
-                </div>
-                <p>La energía media por bit es <i>E_b = A² T_b / 4</i>. La tasa de error de bit teórica bajo ruido blanco gaussiano (AWGN) es:</p>
-                <div class="theory-eq">
-                    BER_coherente = Q(√(E_b / N₀)) &nbsp;&nbsp;·&nbsp;&nbsp; BER_no_coherente = ½ exp(−E_b / (2 N₀))
+                    BER = Q(√(E_b / N₀))
                 </div>
 
-                <h2>4. Modulación Digital FSK</h2>
-                <p>Binary FSK transmite dos tonos ortogonales según el bit de entrada:</p>
+                <h2>4. FSK</h2>
+                <p>Cada bit elige un tono: agudo (1) o grave (0). Si el ruido se mezcla, el receptor se confunde y comete errores (BER).</p>
                 <div class="theory-eq">
-                    f₀ = f_c − Δf &nbsp;(bit 0) &nbsp;&nbsp;·&nbsp;&nbsp; f₁ = f_c + Δf &nbsp;(bit 1) &nbsp;&nbsp;·&nbsp;&nbsp; h = 2 Δf / R_b
+                    f₀ = f_c − Δf · f₁ = f_c + Δf · h = 2Δf / R_b
                 </div>
-                <p>Para <i>h = 1.0</i> los tonos presentan separación ortogonal óptima de <i>1/T_b</i> en detección no coherente por cuadratura (I/Q).</p>
 
-                <h2>5. Modulación por Pulsos Codificados (PCM)</h2>
-                <p>La conversión analógica a digital PCM comprende tres etapas sucesivas:</p>
-                <ol style="margin-left:24px; color:#F6E6B3; font-size:13px; line-height:1.6;">
-                    <li><strong>Muestreo:</strong> De acuerdo con el teorema de Nyquist-Shannon, la frecuencia de muestreo debe satisfacer <i>f_s ≥ 2 f_m</i> para evitar traslape espectral (aliasing).</li>
-                    <li><strong>Cuantificación Uniforme Midrise:</strong> El rango <i>[−V_FS, +V_FS]</i> se divide en <i>2^n</i> niveles con un paso <i>q = 2 V_FS / 2^n</i>.</li>
-                    <li><strong>Codificación y Transmisión:</strong> Cada muestra se traduce a una palabra binaria de <i>n</i> bits (MSB-first) y se modula digitalmente sobre una portadora de RF.</li>
-                </ol>
-                <p>La relación señal a ruido de cuantificación máxima teórica para una señal senoidal uniforme es:</p>
+                <h2>5. PCM</h2>
+                <p>La señal continua se convierte en muestras y luego en bits, se envía y se reconstruye. Si los bits fallan, la reconstrucción se ve afectada.</p>
                 <div class="theory-eq">
                     SQNR_teórica (dB) = 6.02 · n + 1.76 + 20 log₁₀(Amplitud)
                 </div>
-                <p><strong>Efecto Umbral:</strong> Cuando la relación <i>E_b/N₀</i> del enlace digital es alta, el error está dominado exclusivamente por la cuantificación. Si <i>E_b/N₀</i> cae por debajo del umbral de detección, los errores de bit alteran bits más significativos (MSB) produciendo saltos abruptos que colapsan la fidelidad de la señal reconstruida.</p>
+                <p><strong>Efecto Umbral:</strong> con E_b/N₀ alto, el error lo dominan la cuantificación; si baja, los errores de bit afectan la reconstrucción.</p>
             </article>
         </div>
     </main>
