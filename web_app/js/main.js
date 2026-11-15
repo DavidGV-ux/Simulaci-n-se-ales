@@ -482,7 +482,7 @@ async function runAM(chanCfg) {
         setMetricCard(4, "Error Coherente", met.mseCoh.toExponential(2), `Corr: ${met.corrCoh.toFixed(4)}`, "bright");
         setMetricCard(5, "SNR Efectiva", isFinite(met.snrEffDb) ? `${met.snrEffDb.toFixed(1)} dB` : "∞", `Atenuación: ${met.totalAttenDb.toFixed(1)} dB`, "gold");
 
-        chartManager.renderAM(adapted, { snrDb: res.curve.snr_db, mseEnv: res.curve.mse_env, mseCoh: res.curve.mse_coh }, { fm, fc, fs });
+        chartManager.renderAM(adapted, { fm, fc, fs });
     } catch (err) {
         showError(err.message || String(err));
         console.error(err);
@@ -589,9 +589,7 @@ async function runPCM(chanCfg) {
 
         chartManager.renderPCM(
             adapted,
-            { nBits: res.bits_curve.n_bits, sqnrTheoryDb: res.bits_curve.sqnr_theory_db, sqnrQuantDb: res.bits_curve.sqnr_quant_db, sqnrRecDb: res.bits_curve.sqnr_rec_db },
-            { ebn0Db: res.link_curve.ebn0_db, sqnrDb: res.link_curve.sqnr_db },
-            { duration: durationMs / 1000, fsSample, fm, nBits },
+            { duration: durationMs / 1000, fsSample, fm },
         );
     } catch (err) {
         showError(err.message || String(err));
